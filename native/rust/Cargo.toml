@@ -1,0 +1,10 @@
+[package]
+name = "nexora-core"
+version = "0.1.0"
+edition = "2024"
+authors = ["NEXORA Systems Engineering"]
+description = "Native performance core, DSP audio math, and system telemetry bridge for NEXORA AI."
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

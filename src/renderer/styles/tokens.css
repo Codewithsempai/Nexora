@@ -1,0 +1,92 @@
+/* ==========================================================================
+   NEXORA — Design Tokens & Core Theme
+   Palette: Dark Premium Base (#080A0E, #0D1118, #111721) with Amber & Solar Gold
+   ========================================================================== */
+
+:root {
+  /* Surface & Background Levels */
+  --nexora-bg-void: #05070A;
+  --nexora-bg-primary: #080A0E;
+  --nexora-bg-secondary: #0D1118;
+  --nexora-bg-tertiary: #111721;
+  --nexora-bg-elevated: #161F2E;
+
+  /* Glassmorphic Surfaces */
+  --nexora-glass-surface: rgba(13, 17, 24, 0.75);
+  --nexora-glass-card: rgba(17, 23, 33, 0.65);
+  --nexora-glass-elevated: rgba(22, 31, 46, 0.85);
+  --nexora-glass-blur: 24px;
+  --nexora-glass-border: rgba(245, 158, 11, 0.12);
+  --nexora-glass-border-subtle: rgba(255, 255, 255, 0.06);
+  --nexora-glass-border-active: rgba(245, 158, 11, 0.45);
+
+  /* Primary Accent: Amber / Solar Gold / Warm White */
+  --nexora-amber-warm: #FFFBEB;
+  --nexora-amber-light: #FDE68A;
+  --nexora-amber-solar: #FBBF24;
+  --nexora-amber-primary: #F59E0B;
+  --nexora-amber-rich: #D97706;
+  --nexora-amber-deep: #B45309;
+  --nexora-amber-glow: rgba(245, 158, 11, 0.35);
+  --nexora-amber-glow-soft: rgba(245, 158, 11, 0.15);
+
+  /* Secondary & Steels */
+  --nexora-steel-darker: #0F172A;
+  --nexora-steel-dark: #1E293B;
+  --nexora-steel-mid: #334155;
+  --nexora-steel-light: #475569;
+  --nexora-steel-muted: #64748B;
+  --nexora-steel-neutral: #94A3B8;
+
+  /* Typography Colors */
+  --nexora-text-bright: #F8FAFC;
+  --nexora-text-main: #E2E8F0;
+  --nexora-text-secondary: #94A3B8;
+  --nexora-text-dim: #64748B;
+  --nexora-text-amber: #FBBF24;
+
+  /* Status Colors */
+  --nexora-status-active: #10B981;
+  --nexora-status-active-glow: rgba(16, 185, 129, 0.35);
+  --nexora-status-idle: #F59E0B;
+  --nexora-status-busy: #3B82F6;
+  --nexora-status-warning: #F97316;
+  --nexora-status-error: #EF4444;
+  --nexora-status-offline: #475569;
+
+  /* Typography Scale */
+  --nexora-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto, sans-serif;
+  --nexora-font-mono: "JetBrains Mono", "SF Mono", Consolas, "Courier New", monospace;
+  --nexora-font-display: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --nexora-text-xs: 0.6875rem; /* 11px */
+  --nexora-text-sm: 0.8125rem; /* 13px */
+  --nexora-text-base: 0.875rem; /* 14px */
+  --nexora-text-md: 1rem;       /* 16px */
+  --nexora-text-lg: 1.125rem;   /* 18px */
+  --nexora-text-xl: 1.375rem;   /* 22px */
+  --nexora-text-2xl: 1.75rem;   /* 28px */
+
+  /* Spacing Scale */
+  --nexora-space-1: 4px;
+  --nexora-space-2: 8px;
+  --nexora-space-3: 12px;
+  --nexora-space-4: 16px;
+  --nexora-space-5: 20px;
+  --nexora-space-6: 24px;
+  --nexora-space-8: 32px;
+  --nexora-space-10: 40px;
+
+  /* Shadows & Depth */
+  --nexora-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --nexora-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 1px rgba(245, 158, 11, 0.15);
+  --nexora-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.65), 0 0 1px rgba(245, 158, 11, 0.2);
+  --nexora-shadow-orb: 0 0 60px rgba(245, 158, 11, 0.25), 0 0 120px rgba(217, 119, 6, 0.12);
+
+  /* Animation Timings */
+  --nexora-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --nexora-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --nexora-transition-fast: 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  --nexora-transition-base: 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  --nexora-transition-smooth: 380ms cubic-bezier(0.16, 1, 0.3, 1);
+}

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXORA — Holographic Desktop AI Assistant</title>
+  <link rel="icon" type="image/png" href="assets/nexora-favicon.png">
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="styles/glass-redesign.css">
+</head>
+<body>
+  <div class="nexora-app-shell">
+    <!-- 1. Custom Frameless Titlebar Container -->
+    <header id="titlebarContainer"></header>
+
+    <!-- 2. Main Stage with Central Golden Orb -->
+    <main class="nexora-stage-container">
+      <!-- Horizontal workspace navigation -->
+      <div id="navContainer"></div>
+
+      <!-- Center Stage: The Quantum Orb Viewport -->
+      <section class="orb-viewport-center" aria-label="NEXORA home">
+        <div class="core-home-copy">
+          <span class="core-eyebrow">PERSONAL AI ASSISTANT</span>
+          <h1><span>Meet</span><strong>NEXORA</strong></h1>
+          <p>Voice, memory and desktop actions — gathered in one calm workspace.</p>
+          <div class="core-home-tags"><span class="phase-badge">PHASE 3</span><span class="phase-badge">GEMINI LIVE</span></div>
+        </div>
+        <div class="orb-canvas-container">
+          <canvas id="orbCanvas"></canvas>
+          <!-- v0.3.26: glass speech bubbles float around the robot (not at the bottom) -->
+          <div class="live-captions" id="liveCaptions" aria-live="polite" hidden><div class="cap-scroll" id="capScroll"><div class="live-cap live-cap-user" id="liveCapUser"></div><div class="live-cap live-cap-ai" id="liveCapAi"></div></div></div>
+        </div>
+        <!-- v0.3.12: live voice captions live HERE, not in the typed-chat history -->
+        
+
+      </section>
+
+      <!-- 3. Sliding Glass Panel Viewports -->
+      <aside class="panel-viewport" id="memoryPanelContainer"></aside>
+      <aside class="panel-viewport" id="reminderPanelContainer"></aside>
+      <aside class="panel-viewport" id="autonomyPanelContainer"></aside>
+      <aside class="panel-viewport" id="chatPanelContainer"></aside>
+      <aside class="panel-viewport" id="statusPanelContainer"></aside>
+      <aside class="panel-viewport" id="settingsPanelContainer"></aside>
+      <aside class="panel-viewport orb-panel-viewport" id="orbPanelContainer">
+        <section class="nexora-panel orb-studio-panel">
+          <header class="panel-header"><div class="panel-title-cluster"><h2 class="panel-title">Orb Studio</h2><span class="phase-badge">VISUAL CONTROLS</span></div><button class="panel-btn-close" id="btnCloseOrb" title="Close Orb Studio — Return to Core" aria-label="Close Orb Studio"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+          <div class="orb-studio-panel-content">
+        <!-- Orb Studio sections, one panel each -->
+        <nav class="studio-tabs" id="studioTabs" role="tablist" aria-label="Orb Studio sections">
+          <button type="button" role="tab" class="studio-tab active" data-tab="orb" aria-selected="true">Orb</button>
+          <button type="button" role="tab" class="studio-tab" data-tab="quality" aria-selected="false">Quality</button>
+          <button type="button" role="tab" class="studio-tab" data-tab="robot" id="studioTabRobot" aria-selected="false">Robot</button>
+          <button type="button" role="tab" class="studio-tab" data-tab="popup" aria-selected="false">Popup</button>
+        </nav>
+        <div class="studio-pane" data-pane="orb" role="tabpanel">
+        <!-- Orb Studio preset selector -->
+        <div class="orb-studio-controls" id="orbStudioControls">
+          <label for="orbPresetSelect">ORB STUDIO</label>
+          <select id="orbPresetSelect" aria-label="Select orb visual preset">
+            <option value="nexora">NEXORA (old) — Particle Sphere</option><option value="nexo">Neural Sphere</option><option value="nexie">Particle Flow</option><option value="robot">NEXORA Robot — 3D Robot</option></select>
+          <button id="orbSfxToggle" type="button" aria-pressed="true">SFX ON</button>
+        </div>
+        <div class="orb-size-controls" id="orbSizeControls" aria-label="Orb preview size">
+          <button type="button" data-size="320">Robot 320</button><button type="button" data-size="220">Big preview 220</button><button type="button" data-size="132">Default 132</button><button type="button" data-size="84">Small 84</button><button type="button" data-size="30">Cursor 30</button>
+        </div>
+        <!-- Quick Orb State Changers -->
+        <div class="orb-quick-controls" id="orbQuickControls">
+          <button class="orb-mode-chip active" data-mode="idle">Idle</button>
+          <button class="orb-mode-chip" data-mode="listening">Listen</button>
+          <button class="orb-mode-chip" data-mode="thinking">Think</button>
+          <button class="orb-mode-chip" data-mode="speaking">Speak</button>
+          <button class="orb-mode-chip" data-mode="wake">Wake</button>
+          <button class="orb-mode-chip" data-mode="error">Error</button>
+          <button class="orb-mode-chip" data-mode="offline">Offline</button>
+        </div>
+        </div>
+        <div class="studio-pane" data-pane="quality" role="tabpanel" hidden>
+          <section class="quality-studio" id="qualityStudio" aria-label="Render quality">
+            <div class="qs-head"><span>RENDER QUALITY</span><small>Changes the robot instantly. No restart, and it stays in sync with Settings.</small></div>
+            <div class="qs-grid" id="qualityGrid" role="group" aria-label="Render quality">
+              <button type="button" class="qs-btn" data-quality="low" aria-pressed="false"><strong>LOW</strong><span>Lightest load</span><i class="qs-bars" data-n="1"></i></button>
+              <button type="button" class="qs-btn active" data-quality="medium" aria-pressed="true"><strong>MEDIUM</strong><span>Balanced</span><i class="qs-bars" data-n="2"></i></button>
+              <button type="button" class="qs-btn" data-quality="high" aria-pressed="false"><strong>HIGH</strong><span>Sharp + glossy</span><i class="qs-bars" data-n="3"></i></button>
+              <button type="button" class="qs-btn" data-quality="very-high" aria-pressed="false"><strong>VERY HIGH</strong><span>Maximum detail</span><i class="qs-bars" data-n="4"></i></button>
+            </div>
+            <p class="qs-note" id="qualityNote"></p>
+            <dl class="qs-stats" id="qualityStats" aria-live="off">
+              <div><dt>Frame rate</dt><dd data-stat="fps">-</dd></div>
+              <div><dt>Robot render</dt><dd data-stat="px">-</dd></div>
+              <div><dt>Edge smoothing</dt><dd data-stat="aa">-</dd></div>
+              <div><dt>Supersampling</dt><dd data-stat="ss">-</dd></div>
+              <div><dt>Reflections</dt><dd data-stat="env">-</dd></div>
+              <div><dt>Frame cap</dt><dd data-stat="cap">-</dd></div>
+            </dl>
+            <p class="qs-hint" id="qualityHint" hidden>Quality applies to the 3D robot Orb. Pick "NEXORA Robot" in the Orb tab to see it.</p>
+          </section>
+        </div>
+        <div class="studio-pane" data-pane="robot" role="tabpanel" hidden>
+        <!-- Robot Studio: expressions, face VFX and body animations (visible only for the NEXORA Robot Orb) -->
+        <section class="robot-studio" id="robotStudio" aria-label="Robot Studio" hidden></section>
+        </div>
+        <div class="studio-pane" data-pane="popup" role="tabpanel" hidden>
+        <!-- Popup Orb Studio: the floating Orb that appears on the wake phrase when the main window is closed -->
+        <section class="popup-studio" id="popupStudio" aria-label="Popup Orb Studio">
+          <div class="popup-studio-head"><span>POPUP ORB STUDIO</span><small>Floating Orb shown on the wake phrase while NEXORA is closed to tray, hidden or minimized.</small></div>
+          <div class="popup-studio-row"><label for="popupPresetSelect">Preset</label>
+            <select id="popupPresetSelect" aria-label="Popup Orb preset"><option value="same">Same as main Orb</option><option value="nexora">NEXORA (old) — Particle Sphere</option><option value="nexo">Neural Sphere</option><option value="nexie">Particle Flow</option><option value="robot">NEXORA Robot — 3D Robot</option></select></div>
+          <div class="popup-studio-row"><label>Size</label><div class="orb-size-controls" id="popupSizeControls">
+            <button type="button" data-popup-size="300">Big 300</button><button type="button" data-popup-size="200">Default 200</button><button type="button" data-popup-size="132">Small 132</button><button type="button" data-popup-size="84">Tiny 84</button></div></div>
+          <div class="popup-studio-row"><label for="popupSizeRange">Custom</label><input type="range" id="popupSizeRange" min="40" max="500" step="2" value="200" aria-label="Popup Orb size"><output id="popupSizeValue">200px</output></div>
+          <div class="popup-studio-row"><label for="popupPositionSelect">Position</label>
+            <select id="popupPositionSelect" aria-label="Popup Orb position"><option value="bottom-center">Bottom center</option><option value="bottom-right">Bottom right</option><option value="bottom-left">Bottom left</option><option value="top-center">Top center</option><option value="top-right">Top right</option><option value="top-left">Top left</option><option value="center">Screen center</option></select></div>
+          <div class="popup-state-chips" id="popupStateControls">
+            <button type="button" data-popup-state="idle">Idle</button><button type="button" data-popup-state="listen">Listen</button><button type="button" data-popup-state="think">Think</button><button type="button" data-popup-state="speak">Speak</button><button type="button" data-popup-state="wake">Wake</button><button type="button" data-popup-state="error">Error</button><button type="button" data-popup-state="offline">Offline</button>
+          </div>
+          <div class="popup-studio-actions"><button type="button" id="popupPreviewBtn">Preview popup</button><button type="button" id="popupHideBtn">Hide preview</button><button type="button" id="popupResetBtn">Reset (200)</button></div>
+        </section>
+        </div>
+          </div>
+        </section>
+      </aside>
+
+      <!-- Bottom-center quick prompt (Core view) -->
+      <div class="core-bottom-composer" id="coreBottomComposer" role="group" aria-label="Quick message composer">
+        <button class="composer-add-btn" type="button" title="Options" aria-label="Options"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        <textarea id="coreQuickPrompt" rows="1" placeholder="Ask NEXORA anything..." aria-label="Message NEXORA"></textarea>
+        <button class="composer-send-btn" id="coreQuickSend" type="button" title="Send message" aria-label="Send message">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/></svg>
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <div id="toastStack" aria-label="Notifications"></div>
+  <script type="module" src="app/app.js"></script>
+</body>
+</html>

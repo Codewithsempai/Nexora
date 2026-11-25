@@ -1,0 +1,14 @@
+const assert = require('assert'); const fs = require('fs'); const path = require('path');
+const root = path.join(__dirname, '..', '..'); const pkg = require('../../package.json');
+const b = pkg.build; assert.ok(b && b.appId && b.win && b.nsis, 'electron-builder config present');
+assert.ok(fs.existsSync(path.join(root, b.win.icon)), 'installer icon exists');
+for (const f of ['LICENSE', 'NOTICE', 'PRIVACY.md']) assert.ok(fs.existsSync(path.join(root, f)), `${f} is listed in build.files and must exist`);
+assert.ok(b.asarUnpack.some((p) => p.includes('wakeword')), 'wake-word models are unpacked');
+for (const f of b.asarUnpack.filter((p) => !p.includes('*'))) assert.ok(fs.existsSync(path.join(root, f)), `${f} exists`);
+assert.ok(pkg.dependencies['electron-updater'] && pkg.devDependencies['electron-builder']);
+const sec = fs.readFileSync(path.join(root, 'SECURITY.md'), 'utf8');
+assert.ok(!/<[^>]*(email|contact)[^>]*>/i.test(sec), 'SECURITY.md has no placeholder');
+const { VALID_IPC_CHANNELS } = require('../../src/preload/contracts/api');
+const pre = fs.readFileSync(path.join(root, 'src/preload/index.js'), 'utf8');
+for (const ch of ['memory:export', 'memory:import', 'diagnostics:export', 'diagnostics:open-logs']) assert.ok(VALID_IPC_CHANNELS.includes(ch) && pre.includes(`'${ch}'`), `${ch} wired`);
+console.log('  packaging config ok');

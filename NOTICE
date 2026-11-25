@@ -1,0 +1,28 @@
+NEXORA
+Copyright (C) 2026 Dayanithi (codewithsempai_daya)
+
+NEXORA is free software licensed under the GNU Affero General Public License,
+version 3 or (at your option) any later version. The full license text is in
+the file LICENSE. SPDX-License-Identifier: AGPL-3.0-or-later
+
+Name and logo
+-------------
+The AGPL gives you rights to the source code. It does not give you any rights
+to use the NEXORA name, the NEXORA logo or the "codewithsempai" name as your
+own brand. If you distribute a modified version, please rename it so that
+people do not mistake it for the official NEXORA.
+
+Third-party software
+--------------------
+NEXORA includes or depends on the following components, each under its own
+license, which this file does not change:
+
+  - Electron (MIT) and Chromium components - https://www.electronjs.org
+  - three.js and its FBXLoader (MIT) - https://threejs.org
+  - fflate (MIT) - https://github.com/101arrowz/fflate
+  - ws (MIT) - https://github.com/websockets/ws
+  - minifb (MIT/Apache-2.0) - https://crates.io/crates/minifb
+  - openWakeWord front-end models melspectrogram.onnx and embedding_model.onnx
+    (Apache-2.0) - https://github.com/dscripka/openWakeWord
+
+Use of the Google Gemini API is governed by Google's own terms.

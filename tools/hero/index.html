@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><title>NEXORA hero</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:1200px;height:680px;overflow:hidden;background:#0b1016;font-family:"DejaVu Sans Mono","Cascadia Mono",Consolas,monospace}
+#icon{position:absolute;left:548px;top:28px;width:104px;height:104px}
+#panel{position:absolute;left:95px;top:170px;width:1010px;height:485px;background:#05181b;border:1px solid #2a7a72;
+ background-image:radial-gradient(#0a3a3c 1px,transparent 1.3px);background-size:12px 12px;background-position:8px 8px}
+#title{position:absolute;left:0;right:0;top:24px;display:flex;justify-content:center;gap:10px}
+.ltr{display:grid;grid-template-columns:repeat(5,8px);grid-auto-rows:8px;gap:0}.ltr i{display:block;width:7px;height:7px}.ltr i.on{background:#e2fffa;box-shadow:0 0 8px #5ff}
+#tag{position:absolute;left:0;right:0;top:100px;text-align:center;color:#96dcd2;font-size:19px}#tag b{color:#2de2c8}
+#bubble{position:absolute;left:600px;top:130px;min-width:170px;height:40px;padding:9px 14px;border:2px solid #2de2c8;background:#051c1e;color:#c8f5ee;font-size:18px;opacity:0}
+.slot{position:absolute;display:grid;place-items:center}.slot canvas{display:block}
+.lab{position:absolute;width:140px;text-align:center;font-weight:700;font-size:15px;color:#96dcd2}.lab.c{color:#2de2c8}
+#cursor{position:absolute;left:370px;top:372px;width:22px;height:30px}
+</style></head><body>
+<img id="icon" src="/docs/art/icon.png" alt="">
+<div id="panel"><div id="title"></div>
+<div id="tag">An AI buddy that lives on your screen, <b>talks back</b> and gets things done.</div>
+<div id="bubble"></div></div>
+<script type="module">
+import { OrbStateManager } from '/src/renderer/orb/orb-state.js';
+import { OrbEngine } from '/src/renderer/orb/orb-engine.js';
+const G={N:['10001','11001','10101','10011','10001','10001','10001'],E:['11111','10000','10000','11110','10000','10000','11111'],X:['10001','10001','01010','00100','01010','10001','10001'],O:['01110','10001','10001','10001','10001','10001','01110'],R:['11110','10001','10001','11110','10100','10010','10001'],A:['01110','10001','10001','11111','10001','10001','10001']};
+const title=document.getElementById('title');
+for(const ch of 'NEXORA'){const l=document.createElement('div');l.className='ltr';for(const row of G[ch])for(const v of row){const i=document.createElement('i');if(v==='1')i.className='on';l.appendChild(i);}title.appendChild(l);}
+const panel=document.getElementById('panel');
+// [profile, label, centre x in panel, size, resting state]
+const SLOTS=[['robot','ROBOT',105,190],['nexo','NEXO',270,150],['nexora','NEXORA',505,260],['nexie','NEXIE',740,150]];
+const cy=300, engines={}, managers={};
+for(const [profile,label,cx,size] of SLOTS){
+  const s=document.createElement('div');s.className='slot';s.style.cssText=`left:${cx-size/2}px;top:${cy-size/2}px;width:${size}px;height:${size}px`;
+  const cv=document.createElement('canvas');s.appendChild(cv);panel.appendChild(s);
+  const lab=document.createElement('div');lab.className='lab'+(profile==='nexora'?' c':'');lab.textContent=label;lab.style.cssText=`left:${cx-70}px;top:432px`;panel.appendChild(lab);
+  const m=new OrbStateManager('idle');try{localStorage.removeItem('nexora-orb-profile');}catch{}const e=new OrbEngine(cv,m);e.setProfile(profile);e.setFullSize(true);e.setPerformanceMode('high');e.resize();e.start();
+  engines[profile]=e;managers[profile]=m;
+}
+const cur=document.createElement('div');cur.id='cursor';cur.innerHTML='<svg viewBox="0 0 12 20" width="22" height="30"><polygon points="0,0 0,17 4,13 7,20 10,19 7,12 12,12" fill="#f0fafa" stroke="#0a1e1e"/></svg>';cur.style.left='372px';cur.style.top='345px';panel.appendChild(cur);
+const bubble=document.getElementById('bubble'),TEXT="Hey, I'm NEXORA.";
+let t0=null;
+function lvl(t){return Math.max(0,Math.min(1,0.42+0.38*Math.sin(t*13)*Math.sin(t*5.3+1)+0.12*Math.sin(t*29)));}
+function tick(now){
+  if(t0===null) return requestAnimationFrame(tick);
+  const t=(now-t0)/1000; // 0..8
+  const talk=t>1.2&&t<6.4;
+  const L=talk?lvl(t):0;
+  managers.nexora.setState(talk?'speak':(t<1.2?'wake':'idle'));managers.nexora.setAudioLevel(L);
+  managers.robot.setState(talk?'speak':'idle');managers.robot.setAudioLevel(talk?lvl(t+.3):0);
+  managers.nexo.setState(t>2&&t<6?'think':'idle');
+  managers.nexie.setState(t>3&&t<6.4?'listen':'idle');managers.nexie.setAudioLevel(t>3&&t<6.4?0.25+0.2*Math.sin(t*9):0);
+  const n=Math.max(0,Math.min(TEXT.length,Math.floor((t-1.4)*7)));
+  bubble.style.opacity=t>1.3&&t<6.9?1:0;bubble.textContent=TEXT.slice(0,n)+((n<TEXT.length&&Math.floor(t*4)%2)?'_':'');
+  cur.style.top=(345+4*Math.sin(t*2))+'px';
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+// ready = the robot's 10 MB model is loaded and drawing
+const ready=setInterval(()=>{const r=engines.robot.robot; if(r&&(r.ready||r.isReady?.()||r.loaded)){clearInterval(ready);go();}},200);
+setTimeout(()=>{clearInterval(ready);go();},25000);
+let started=false;function go(){if(started)return;started=true;setTimeout(()=>{window.__ready=true;},1500);}
+window.startTimeline=()=>{t0=performance.now();};
+</script></body></html>

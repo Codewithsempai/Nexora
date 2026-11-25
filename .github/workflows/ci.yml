@@ -1,0 +1,27 @@
+name: CI
+on:
+  push: { branches: [main, master] }
+  pull_request:
+jobs:
+  test:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix: { node: [20, 22] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ matrix.node }}', cache: npm }
+      # `npm install` (not `npm ci`): package-lock.json must be regenerated once after the v0.4.0 dependency additions.
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+  e2e:
+    runs-on: windows-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm install --no-audit --no-fund
+      - run: npm run test:e2e
+        continue-on-error: true   # promote to required once it has run green on your repo

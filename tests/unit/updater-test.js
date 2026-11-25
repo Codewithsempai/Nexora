@@ -1,0 +1,16 @@
+const assert = require('assert');
+const { startUpdater } = require('../../src/main/services/updater');
+const quiet = { log() {}, warn() {} };
+const cfg = (v) => ({ get: () => v });
+assert.strictEqual(startUpdater({ app: { isPackaged: false }, configService: cfg(true), log: quiet }).reason, 'not-packaged');
+assert.strictEqual(startUpdater({ app: { isPackaged: true }, configService: cfg(false), log: quiet }).reason, 'disabled');
+assert.strictEqual(startUpdater({ app: { isPackaged: true }, configService: cfg(true), log: quiet, load: () => { throw new Error('nope'); } }).reason, 'electron-updater-missing');
+const handlers = {}; let checked = 0; let timer = null;
+const autoUpdater = { on: (e, f) => { handlers[e] = f; }, checkForUpdates: async () => { checked++; } };
+const res = startUpdater({ app: { isPackaged: true }, configService: cfg(true), log: quiet, load: () => ({ autoUpdater }), setTimer: (f) => { timer = f; } });
+assert.ok(res.started && autoUpdater.autoDownload === true);
+timer(); setImmediate(() => { assert.strictEqual(checked, 1); });
+let notified = null; startUpdater({ app: { isPackaged: true }, configService: cfg(true), log: quiet, notify: (i) => { notified = i; }, load: () => ({ autoUpdater }), setTimer: () => {} });
+handlers['update-downloaded']({ version: '1.2.3' }); assert.strictEqual(notified.version, '1.2.3');
+assert.doesNotThrow(() => handlers.error(new Error('offline')));
+console.log('  updater ok');

@@ -1,0 +1,30 @@
+{
+  "name": "nexora",
+  "version": "0.3.25",
+  "description": "NEXORA — Desktop AI Assistant (Phase 3 Live Voice + Wake Word + Memory + Reminders + Robot Orb)",
+  "main": "src/main/application/app.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "test": "node tests/unit/run-tests.js && node tests/unit/live-tools-test.js && node tests/unit/tts-test.js && node tests/unit/categories-test.js && node tests/unit/alert-test.js && node tests/unit/autonomy-test.js && node tests/unit/voice-task-test.js && node tests/unit/apps-voice-screen-test.js && node tests/unit/wake-live-test.js && node tests/unit/download-voice-test.js && node tests/unit/model-health-test.js && node tests/unit/robot-test.js && node tests/unit/autonomy-v014-test.js && node tests/unit/wake-v015-test.js && node tests/unit/window-glass-test.js && node tests/unit/wake-onnx-test.js && node tests/unit/telemetry-test.js && node tests/unit/update-test.js",
+    "build:rust": "cargo build --manifest-path native/rust/Cargo.toml --release",
+    "build:rust:debug": "cargo build --manifest-path native/rust/Cargo.toml",
+    "hero": "node tools/record-hero.js"
+  },
+  "keywords": [
+    "nexora",
+    "ai-assistant",
+    "desktop",
+    "electron",
+    "rust"
+  ],
+  "author": "codewithsempai_daya",
+  "license": "AGPL-3.0-or-later",
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "playwright": "^1.50.0"
+  },
+  "dependencies": {
+    "ws": "^8.23.0"
+  }
+}
