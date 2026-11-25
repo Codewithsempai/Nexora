@@ -7,6 +7,9 @@
 import { OrbEngine } from '../orb/orb-engine.js';
 import { OrbStateManager } from '../orb/orb-state.js';
 
+const NEXORA_LOGO_URL = new URL('../../../assets/icons/nexora-app-icon.png', import.meta.url).href;
+const NEXORA_MARKER_URL = new URL('../assets/nexora-icon.png', import.meta.url).href;
+
 const STEP_META = [
   { id: 'welcome', title: 'Welcome' },
   { id: 'api-key', title: 'Gemini API Key' },
@@ -180,10 +183,22 @@ export class SetupWizard {
     return this.state.keyConfigured && this.state.keyValidated;
   }
 
+  renderBrandEmblemHtml() {
+    return `
+      <div class="setup-brand-emblem" aria-hidden="true">
+        <img class="setup-brand-img" src="${escapeHtml(NEXORA_LOGO_URL)}" alt="NEXORA" width="76" height="76" draggable="false" onerror="this.onerror=null;this.src='${escapeHtml(NEXORA_MARKER_URL)}'" />
+      </div>`;
+  }
+
   renderHeaderHtml() {
     const dots = STEP_META.map((m, i) => {
-      const cls = i < this.step ? 'done' : (i === this.step ? 'active' : '');
-      return `<span class="setup-step-dot ${cls}" title="${escapeHtml(m.title)}"></span>`;
+      const isDone = i < this.step;
+      const isActive = i === this.step;
+      const cls = isDone ? 'done' : (isActive ? 'active' : '');
+      const marker = isActive
+        ? `<img class="setup-step-marker" src="${escapeHtml(NEXORA_MARKER_URL)}" alt="" width="14" height="14" draggable="false" />`
+        : '';
+      return `<span class="setup-step-dot ${cls}" title="Step ${i + 1}: ${escapeHtml(m.title)}">${marker}</span>`;
     }).join('');
     return `
       <div class="setup-wizard-header">
@@ -191,7 +206,7 @@ export class SetupWizard {
           <span class="setup-step-kicker">Step ${this.step + 1} of ${STEP_META.length}</span>
           <h2 class="setup-step-heading" id="setupWizardTitle">${escapeHtml(STEP_META[this.step].title)}</h2>
         </div>
-        <div class="setup-step-dots" aria-hidden="true">${dots}</div>
+        <div class="setup-step-dots" role="progressbar" aria-label="Setup progress" aria-valuemin="1" aria-valuemax="${STEP_META.length}" aria-valuenow="${this.step + 1}">${dots}</div>
       </div>`;
   }
 
@@ -220,7 +235,7 @@ export class SetupWizard {
     if (this.step === 0) {
       body = `
         <div class="setup-welcome-hero">
-          <div class="setup-orb-emblem" aria-hidden="true"></div>
+          ${this.renderBrandEmblemHtml()}
           <h1 class="setup-welcome-title">NEXORA</h1>
           <p class="setup-welcome-subtitle">Your Personal AI Desktop Assistant</p>
           <p class="setup-welcome-copy">
@@ -230,6 +245,7 @@ export class SetupWizard {
         </div>`;
     } else if (this.step === 1) {
       const toneClass = this.state.keyStatusTone === 'ok' ? 'ok' : (this.state.keyStatusTone === 'err' ? 'err' : (this.state.keyStatusTone === 'warn' ? 'warn' : ''));
+      const showRetry = this.state.keyStatusTone === 'err';
       body = `
         <div class="setup-panel-box">
           <label for="wizardApiKeyInput">Gemini API Key (stored encrypted via Electron safeStorage in the main process)</label>
@@ -238,7 +254,8 @@ export class SetupWizard {
             <button type="button" class="btn-secondary" id="wizardToggleKeyBtn">${this.state.keyInputVisible ? 'Hide' : 'Show'}</button>
           </div>
           <div class="setup-inline-actions">
-            <button type="button" class="btn-primary" id="wizardValidateKeyBtn" ${this.state.keyBusy ? 'disabled' : ''}>Validate &amp; Save Key</button>
+            <button type="button" class="btn-primary" id="wizardValidateKeyBtn" ${this.state.keyBusy ? 'disabled aria-busy="true"' : ''}>${this.state.keyBusy ? 'Validating...' : 'Validate & Save Key'}</button>
+            ${showRetry ? `<button type="button" class="btn-secondary" id="wizardRetryKeyBtn" ${this.state.keyBusy ? 'disabled' : ''}>Retry</button>` : ''}
             ${this.state.keyConfigured ? `<button type="button" class="btn-secondary" id="wizardVerifySavedKeyBtn" ${this.state.keyBusy ? 'disabled' : ''}>Verify Saved Key</button>` : ''}
           </div>
           <div class="setup-status-banner ${toneClass}" id="wizardKeyStatus">${escapeHtml(this.state.keyStatusMessage)}</div>
@@ -283,7 +300,10 @@ export class SetupWizard {
               <span style="display:block;font-weight:600;">Enable Offline Wake Word</span>
               <small style="color:rgba(255,255,255,0.68);">Say “Hey NEXORA” or “NEXORA” locally via ONNX before connecting to Gemini.</small>
             </div>
-            <input type="checkbox" id="wizardWakeToggle" ${this.state.wakeWordEnabled ? 'checked' : ''} />
+            <label class="setting-toggle">
+              <input type="checkbox" id="wizardWakeToggle" ${this.state.wakeWordEnabled ? 'checked' : ''} />
+              <span class="toggle-slider"></span>
+            </label>
           </div>
           <div class="setup-inline-actions">
             <button type="button" class="btn-primary" id="wizardWakeTestBtn">${this.wakeTesting ? 'Stop Wake Test' : 'Test Wake Word'}</button>
@@ -303,7 +323,7 @@ export class SetupWizard {
         </div>`;
     } else if (this.step === 5) {
       const cards = PERMISSION_PRESETS.map((preset) => `
-        <button type="button" class="setup-perm-option ${this.state.permissionLevel === preset.id ? 'selected' : ''}" data-perm-level="${preset.id}">
+        <button type="button" class="setup-perm-option ${this.state.permissionLevel === preset.id ? 'selected' : ''}" data-perm-level="${preset.id}" role="radio" aria-checked="${this.state.permissionLevel === preset.id}">
           <span class="setup-perm-title-row">
             <strong>${escapeHtml(preset.title)}</strong>
             <span class="setup-perm-badge">${escapeHtml(preset.badge)}</span>
@@ -318,9 +338,9 @@ export class SetupWizard {
       const micObj = this.state.micDevices.find((d) => d.deviceId === this.state.micDeviceId);
       const micLabel = micObj?.label || 'System Default Microphone';
       body = `
-        <div class="setup-welcome-hero" style="padding-top:4px;padding-bottom:6px;">
-          <div class="setup-orb-emblem" style="width:68px;height:68px;" aria-hidden="true"></div>
-          <h1 class="setup-welcome-title" style="font-size:24px;">NEXORA IS READY</h1>
+        <div class="setup-welcome-hero setup-complete-hero">
+          ${this.renderBrandEmblemHtml()}
+          <h1 class="setup-welcome-title setup-complete-title">NEXORA IS READY</h1>
           <p class="setup-welcome-copy">Your preferences are ready to save. Updates never reset your settings or memory.</p>
         </div>
         <div class="setup-summary-grid">
@@ -328,7 +348,7 @@ export class SetupWizard {
           <div class="setup-summary-item"><span>Microphone</span><strong>${escapeHtml(micLabel)}${this.state.micTested ? ' (Tested)' : ''}</strong></div>
           <div class="setup-summary-item"><span>Wake Word</span><strong>${this.state.wakeWordEnabled ? 'Enabled (Offline ONNX)' : 'Disabled'}</strong></div>
           <div class="setup-summary-item"><span>Appearance</span><strong>${escapeHtml((APPEARANCE_OPTIONS.find((o) => o.id === this.state.orbProfile) || APPEARANCE_OPTIONS[0]).title)}</strong></div>
-          <div class="setup-summary-item" style="grid-column:span 2;"><span>Action Safety Level</span><strong>${escapeHtml(preset.title)}</strong></div>
+          <div class="setup-summary-item setup-summary-item-wide"><span>Action Safety Level</span><strong>${escapeHtml(preset.title)}</strong></div>
         </div>`;
     }
 
@@ -368,7 +388,7 @@ export class SetupWizard {
       toggleBtn.textContent = this.state.keyInputVisible ? 'Hide' : 'Show';
     });
 
-    validateBtn?.addEventListener('click', async () => {
+    const runValidate = async () => {
       const candidate = input?.value?.trim() || '';
       if (!candidate) {
         this.state.keyStatusTone = 'err';
@@ -380,7 +400,6 @@ export class SetupWizard {
       this.state.keyStatusTone = 'neutral';
       this.state.keyStatusMessage = 'Checking connection with Google Gemini...';
       this.updateKeyStatusDom();
-      if (validateBtn) validateBtn.disabled = true;
 
       try {
         const res = await window.nexoraAPI?.ai?.validateKey?.(candidate);
@@ -408,10 +427,12 @@ export class SetupWizard {
         this.state.keyStatusMessage = 'Network or validation error. Please retry.';
       } finally {
         this.state.keyBusy = false;
-        if (validateBtn) validateBtn.disabled = false;
         this.updateKeyStatusDom();
       }
-    });
+    };
+
+    validateBtn?.addEventListener('click', () => { void runValidate(); });
+    this.container.querySelector('#wizardRetryKeyBtn')?.addEventListener('click', () => { void runValidate(); });
 
     verifySavedBtn?.addEventListener('click', async () => {
       this.state.keyBusy = true;
@@ -442,9 +463,31 @@ export class SetupWizard {
   updateKeyStatusDom() {
     const el = this.container?.querySelector('#wizardKeyStatus');
     const nextBtn = this.container?.querySelector('#wizardNextBtn');
+    const validateBtn = this.container?.querySelector('#wizardValidateKeyBtn');
+    const actionsRow = this.container?.querySelector('.setup-inline-actions');
     if (el) {
       el.textContent = this.state.keyStatusMessage;
       el.className = `setup-status-banner ${this.state.keyStatusTone === 'ok' ? 'ok' : (this.state.keyStatusTone === 'err' ? 'err' : (this.state.keyStatusTone === 'warn' ? 'warn' : ''))}`;
+    }
+    if (validateBtn) {
+      validateBtn.disabled = this.state.keyBusy;
+      validateBtn.setAttribute('aria-busy', this.state.keyBusy ? 'true' : 'false');
+      validateBtn.textContent = this.state.keyBusy ? 'Validating...' : 'Validate & Save Key';
+    }
+    if (actionsRow) {
+      let retryBtn = this.container.querySelector('#wizardRetryKeyBtn');
+      if (this.state.keyStatusTone === 'err' && !retryBtn) {
+        retryBtn = document.createElement('button');
+        retryBtn.type = 'button';
+        retryBtn.className = 'btn-secondary';
+        retryBtn.id = 'wizardRetryKeyBtn';
+        retryBtn.textContent = 'Retry';
+        retryBtn.addEventListener('click', () => { validateBtn?.click(); });
+        validateBtn?.insertAdjacentElement('afterend', retryBtn);
+      } else if (retryBtn) {
+        retryBtn.hidden = this.state.keyStatusTone !== 'err';
+        retryBtn.disabled = this.state.keyBusy;
+      }
     }
     if (nextBtn) nextBtn.disabled = !this.canAdvanceFromKeyStep();
   }
@@ -650,49 +693,62 @@ export class SetupWizard {
 
   initAppearancePreviews() {
     this.destroyPreviews();
-    const cards = this.container.querySelectorAll('[data-appearance]');
-    cards.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const chosen = APPEARANCE_IDS.includes(btn.dataset.appearance) ? btn.dataset.appearance : 'nexora';
-        this.state.orbProfile = chosen;
-        cards.forEach((c) => {
-          const on = c.dataset.appearance === chosen;
-          c.classList.toggle('selected', on);
-          c.setAttribute('aria-checked', String(on));
-        });
-        this.app?.soundSystem?.playPanel?.();
+    const cards = [...this.container.querySelectorAll('[data-appearance]')];
+    const selectCard = (btn) => {
+      const chosen = APPEARANCE_IDS.includes(btn.dataset.appearance) ? btn.dataset.appearance : 'nexora';
+      this.state.orbProfile = chosen;
+      cards.forEach((c) => {
+        const on = c.dataset.appearance === chosen;
+        c.classList.toggle('selected', on);
+        c.setAttribute('aria-checked', String(on));
+      });
+      this.app?.soundSystem?.playPanel?.();
+    };
+    cards.forEach((btn, idx) => {
+      btn.addEventListener('click', () => selectCard(btn));
+      btn.addEventListener('keydown', (e) => {
+        if (!['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+        e.preventDefault();
+        const delta = (e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : -1;
+        const nextBtn = cards[(idx + delta + cards.length) % cards.length];
+        if (nextBtn) { nextBtn.focus(); selectCard(nextBtn); }
       });
     });
 
-    // Save/restore localStorage around preview init because OrbEngine.setProfile writes localStorage.
-    let priorProfile = null;
-    try { priorProfile = localStorage.getItem('nexora-orb-profile'); } catch {}
-    try {
-      for (const opt of APPEARANCE_OPTIONS) {
-        const canvas = this.container.querySelector(`#${opt.canvas}`);
-        if (!canvas) continue;
-        const engine = new OrbEngine(canvas, new OrbStateManager('idle'));
-        engine.setPerformanceMode(opt.id === 'robot' ? 'medium' : 'low');
-        engine.setProfile(opt.id);
-        engine.start();
-        this.previewEngines.push(engine);
-      }
-    } finally {
-      try {
-        if (priorProfile != null) localStorage.setItem('nexora-orb-profile', priorProfile);
-        else localStorage.removeItem('nexora-orb-profile');
-      } catch {}
+    for (const opt of APPEARANCE_OPTIONS) {
+      const canvas = this.container.querySelector(`#${opt.canvas}`);
+      if (!canvas) continue;
+      const engine = new OrbEngine(canvas, new OrbStateManager('idle'), {
+        profileId: opt.id,
+        persistProfile: false,
+        performanceMode: opt.id === 'robot' ? 'medium' : 'low',
+        previewMode: true,
+      });
+      engine.start();
+      this.previewEngines.push(engine);
     }
   }
 
   bindPermissionEvents() {
-    const opts = this.container.querySelectorAll('[data-perm-level]');
-    opts.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const chosen = btn.dataset.permLevel;
-        this.state.permissionLevel = chosen;
-        opts.forEach((o) => o.classList.toggle('selected', o.dataset.permLevel === chosen));
-        this.app?.soundSystem?.playPanel?.();
+    const opts = [...this.container.querySelectorAll('[data-perm-level]')];
+    const selectPerm = (btn) => {
+      const chosen = btn.dataset.permLevel;
+      this.state.permissionLevel = chosen;
+      opts.forEach((o) => {
+        const on = o.dataset.permLevel === chosen;
+        o.classList.toggle('selected', on);
+        o.setAttribute('aria-checked', String(on));
+      });
+      this.app?.soundSystem?.playPanel?.();
+    };
+    opts.forEach((btn, idx) => {
+      btn.addEventListener('click', () => selectPerm(btn));
+      btn.addEventListener('keydown', (e) => {
+        if (!['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft'].includes(e.key)) return;
+        e.preventDefault();
+        const delta = (e.key === 'ArrowDown' || e.key === 'ArrowRight') ? 1 : -1;
+        const nextBtn = opts[(idx + delta + opts.length) % opts.length];
+        if (nextBtn) { nextBtn.focus(); selectPerm(nextBtn); }
       });
     });
   }
@@ -701,7 +757,7 @@ export class SetupWizard {
     if (this.saving) return;
     this.saving = true;
     const btn = this.container?.querySelector('#wizardFinishBtn');
-    if (btn) btn.disabled = true;
+    if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.textContent = 'Saving...'; }
 
     try {
       const api = window.nexoraAPI;

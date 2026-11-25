@@ -51,7 +51,16 @@ assert.ok(wizardSrc.includes('Your Personal AI Desktop Assistant'), 'Welcome ste
 assert.ok(wizardSrc.includes('ask_every_time') && wizardSrc.includes('trusted_actions') && wizardSrc.includes('advanced_autonomy'), 'All 3 permission presets must be present');
 assert.ok(wizardSrc.includes('startWakeTest') && wizardSrc.includes('stopWakeTest'), 'Wizard must test offline wake word without calling Gemini Live');
 assert.ok(wizardSrc.includes('new OrbEngine'), 'Appearance preview must render real OrbEngine & Robot');
+assert.ok(!wizardSrc.includes('setup-orb-emblem'), 'Legacy blue sphere emblem must be removed from wizard');
+assert.ok(wizardSrc.includes('setup-brand-emblem') && wizardSrc.includes('nexora-app-icon.png'), 'Wizard must display actual NEXORA brand icon');
+assert.ok(wizardSrc.includes('wizardRetryKeyBtn'), 'API key step must support explicit Retry action');
 assert.ok(!/console\.(log|warn|error).*candidate|rawKey/i.test(wizardSrc), 'Wizard must never log raw API key');
+
+const glassCss = fs.readFileSync(path.join(root, 'src/renderer/styles/glass-redesign.css'), 'utf8');
+assert.ok(!glassCss.includes('--sw-cyan'), 'Wizard CSS must not use legacy cyan/blue theme variables');
+
+const robotOrbSrc = fs.readFileSync(path.join(root, 'src/renderer/orb/robot-orb.js'), 'utf8');
+assert.ok(robotOrbSrc.includes('cachedFbxBuffer') && robotOrbSrc.includes('dispose()'), 'RobotOrb must cache decoded FBX buffer across instances and dispose cleanly');
 
 // 3. Renderer shell, IPC, and VoiceService wake-test invariants
 const indexHtml = fs.readFileSync(path.join(root, 'src/renderer/index.html'), 'utf8');

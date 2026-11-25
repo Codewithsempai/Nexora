@@ -50,20 +50,31 @@ const ORB_PROFILES = {
 };
 
 
+const ROBOT_FALLBACK_ICON = new URL('../assets/nexora-icon.png', import.meta.url).href;
+
 export class OrbEngine {
-  constructor(canvas, stateManager) {
+  constructor(canvas, stateManager, options = {}) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.stateManager = stateManager;
-    this.profileId = localStorage.getItem("nexora-orb-profile") || "nexora";
+    this.persistProfile = options.persistProfile !== false;
+    this.ownsRobot = options.ownsRobot !== false;
+    this.previewMode = !!options.previewMode;
+    this._robotFallbackImg = null;
+    this._robotFailureLogged = false;
+
+    const requestedProfile = options.profileId && ORB_PROFILES[options.profileId] ? options.profileId : null;
+    this.profileId = requestedProfile || localStorage.getItem("nexora-orb-profile") || "nexora";
     this.profile = ORB_PROFILES[this.profileId] || ORB_PROFILES.nexora;
-    if (this.profileId === 'robot') this.ensureRobot();
 
     this.width = 400;
     this.height = 360;
-    this.performanceMode = 'medium';
-    this.performanceProfile = PERFORMANCE_PROFILES.medium;
+    const modeId = options.performanceMode && PERFORMANCE_PROFILES[options.performanceMode] ? options.performanceMode : 'medium';
+    this.performanceMode = modeId;
+    this.performanceProfile = PERFORMANCE_PROFILES[modeId];
     this.dpr = Math.min(window.devicePixelRatio || 1, this.performanceProfile.dprCap);
+
+    if (this.profileId === 'robot') this.ensureRobot();
 
     // Simulation variables
     this.time = 0;
@@ -176,7 +187,14 @@ export class OrbEngine {
 
   /** Create the robot and start loading it right away (also in the hidden popup window, where requestAnimationFrame is paused). */
   ensureRobot() { if (!this.robot) { this.robot = new RobotOrb(); this.robot.setQuality(this.performanceProfile || PERFORMANCE_PROFILES.medium); this.robot.onChange = () => this.onRobotChange?.(); this.robot.onReady = () => this.onRobotChange?.(); } return this.robot; }
-  setProfile(profileId) { if (!ORB_PROFILES[profileId]) return false; this.profileId=profileId; this.profile=ORB_PROFILES[profileId]; if (profileId === 'robot') this.ensureRobot(); try { localStorage.setItem('nexora-orb-profile',profileId); } catch {} return true; }
+  setProfile(profileId, { persist = this.persistProfile } = {}) {
+    if (!ORB_PROFILES[profileId]) return false;
+    this.profileId = profileId;
+    this.profile = ORB_PROFILES[profileId];
+    if (profileId === 'robot') this.ensureRobot();
+    if (persist) { try { localStorage.setItem('nexora-orb-profile', profileId); } catch {} }
+    return true;
+  }
   getProfile() { return this.profileId; }
   setPerformanceMode(mode = 'medium') {
     const profile = PERFORMANCE_PROFILES[mode];
@@ -215,6 +233,10 @@ export class OrbEngine {
 
   destroy() {
     this.stop();
+    if (this.robot && this.ownsRobot) {
+      this.robot.dispose?.();
+      this.robot = null;
+    }
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
@@ -342,10 +364,39 @@ export class OrbEngine {
     const frame = { px, w, h, t: reduce ? 0 : now, state, rgb, level: audioLevel, energy: this.energyLvl, mic: this.micLvl, out: this.outLvl, wake: this.fullSize ? 1 : Math.min(1, Math.max(0, wakeP)), reduce };
     if (this.profileId === 'robot') {
       const rb = this.ensureRobot();
-      if (rb.failed) drawHtmlOrb(ctx, 'nexora', frame);
-      else { try { rb.draw(ctx, { ...frame, fit: 1, popup: !!this.fullSize, quality: this.performanceProfile }); } catch (e) { console.error('[NEXORA robot]', e); rb.failed = true; } }
+      if (rb.failed) {
+        if (!this._robotFailureLogged) {
+          this._robotFailureLogged = true;
+          console.error('[NEXORA robot] 3D robot preview failed to load; showing icon fallback:', rb.error);
+        }
+        this.drawRobotFallbackIcon(ctx, frame);
+      } else {
+        try {
+          const drawRgb = this.previewMode ? [220, 226, 236] : rgb;
+          rb.draw(ctx, { ...frame, rgb: drawRgb, fit: 1, popup: !!(this.fullSize || this.previewMode), quality: this.performanceProfile });
+        } catch (e) {
+          console.error('[NEXORA robot]', e);
+          rb.failed = true;
+          rb.error = e;
+        }
+      }
     } else drawHtmlOrb(ctx, this.profileId, frame);
     ctx.restore();
+  }
+
+  drawRobotFallbackIcon(ctx, frame) {
+    if (!this._robotFallbackImg) {
+      const img = new Image();
+      img.src = ROBOT_FALLBACK_ICON;
+      this._robotFallbackImg = img;
+    }
+    const img = this._robotFallbackImg;
+    const size = Math.min(frame.w, frame.h) * 0.62;
+    const x = (frame.w - size) / 2;
+    const y = (frame.h - size) / 2;
+    if (img.complete && img.naturalWidth > 0) {
+      ctx.drawImage(img, x, y, size, size);
+    }
   }
 
   /** Replay the 750 ms assembly (used when the popup is shown). */

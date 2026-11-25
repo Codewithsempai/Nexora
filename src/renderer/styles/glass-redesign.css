@@ -1223,7 +1223,7 @@ html.is-maximized .nexora-app-shell { width:100vw !important; height:100vh !impo
 /* v0.3.35 Product/owner info labels in uppercase. */
 .system-meta-box .meta-line span { text-transform:uppercase; letter-spacing:.08em; font-size:11px; }
 
-/* ---- First-Run Setup Wizard & Update / Audio Controls (Frosted Glass Theme) ---- */
+/* ---- First-Run Setup Wizard & Update / Audio Controls (Restrained Silver Frosted Glass) ---- */
 .setup-wizard-overlay {
   position: absolute;
   top: var(--nexora-titlebar-height, 38px);
@@ -1235,106 +1235,187 @@ html.is-maximized .nexora-app-shell { width:100vw !important; height:100vh !impo
   align-items: center;
   justify-content: center;
   padding: 20px 24px 24px;
-  background: radial-gradient(circle at 50% 18%, rgba(255, 140, 46, 0.12), transparent 54%), rgba(12, 12, 15, 0.88);
-  animation: setupFadeIn 0.24s ease both;
+  background: radial-gradient(circle at 50% 16%, rgba(255, 255, 255, 0.06), transparent 56%), rgba(10, 11, 14, 0.88);
+  animation: setupFadeIn 0.22s ease both;
 }
 .setup-wizard-overlay[hidden] { display: none !important; }
+
 .setup-wizard-card {
+  --sw-silver: 226, 232, 240;
+  --sw-silver-soft: rgba(255, 255, 255, 0.18);
   width: min(760px, 100%);
   max-height: 100%;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)), rgba(22, 22, 27, 0.94);
+  background:
+    radial-gradient(120% 80% at 15% 0%, rgba(255, 255, 255, 0.07), transparent 55%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)),
+    rgba(20, 21, 26, 0.94);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 26px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   overflow: hidden;
   color: var(--nexora-text-primary, #f5f5f7);
   font-family: var(--nexora-font-family);
 }
+
 .setup-wizard-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 18px 24px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 18px 24px 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  flex-shrink: 0;
 }
-.setup-step-meta { display: flex; flex-direction: column; gap: 4px; }
+.setup-step-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .setup-step-kicker {
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
-  color: #ffb84d;
+  color: rgba(214, 222, 234, 0.72);
 }
-.setup-step-heading { margin: 0; font-size: 19px; font-weight: 600; color: #fff; }
-.setup-step-dots { display: flex; align-items: center; gap: 6px; }
+.setup-step-heading { margin: 0; font-size: 19px; font-weight: 600; color: #f8fafc; line-height: 1.25; }
+
+/* ---- 7-Step Silver Glass Progress Indicator with Active Brand Marker ---- */
+.setup-step-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-height: 20px;
+}
 .setup-step-dot {
-  width: 24px;
+  width: 22px;
   height: 5px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  transition: background 0.2s ease, width 0.2s ease;
+  background: rgba(255, 255, 255, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.setup-step-dot.done { background: rgba(255, 168, 76, 0.55); }
-.setup-step-dot.active { width: 34px; background: linear-gradient(90deg, #ff8c2e, #ffd07b); }
+.setup-step-dot.done {
+  background: rgba(226, 232, 240, 0.45);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.setup-step-dot.active {
+  width: 34px;
+  height: 20px;
+  padding: 2px 6px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(203, 213, 225, 0.12) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.56);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+.setup-step-marker {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+}
+
 .setup-wizard-body {
   flex: 1 1 auto;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 22px 26px;
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
+
+/* ---- Welcome & Complete Setup Heroes with Real NEXORA Icon ---- */
 .setup-welcome-hero {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 12px 10px 6px;
-  gap: 12px;
+  padding: 10px 10px 6px;
+  gap: 11px;
 }
-.setup-orb-emblem {
+.setup-complete-hero { padding-top: 4px; padding-bottom: 4px; gap: 9px; }
+.setup-brand-emblem {
   position: relative;
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 36% 32%, #ffe3a8 0%, #ff9933 42%, rgba(255, 115, 20, 0.35) 75%, transparent 100%);
-  box-shadow: 0 0 42px rgba(255, 140, 46, 0.45), inset 0 0 18px rgba(255, 240, 200, 0.65);
-  animation: setupOrbPulse 3.2s ease-in-out infinite;
+  width: 84px;
+  height: 84px;
+  padding: 6px;
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.16), transparent 62%),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.52),
+    0 0 24px rgba(226, 232, 240, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  animation: setupBrandFloat 4s ease-in-out infinite;
+  flex-shrink: 0;
 }
-.setup-welcome-title { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 0.14em; color: #fff; }
-.setup-welcome-subtitle { margin: 0; font-size: 15px; font-weight: 500; color: #ffcb80; }
+.setup-brand-img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  display: block;
+  border-radius: 16px;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
+}
+.setup-welcome-title { margin: 0; font-size: 27px; font-weight: 700; letter-spacing: 0.14em; color: #ffffff; }
+.setup-complete-title { font-size: 24px; letter-spacing: 0.1em; }
+.setup-welcome-subtitle { margin: 0; font-size: 14.5px; font-weight: 500; color: rgba(226, 232, 240, 0.9); }
 .setup-welcome-copy {
   margin: 0;
   max-width: 520px;
   font-size: 13px;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.74);
+  color: rgba(255, 255, 255, 0.72);
 }
+
+/* ---- Form Panels, Inputs & Status Banners ---- */
 .setup-panel-box {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.11);
   border-radius: 16px;
   padding: 15px 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 11px;
 }
+.setup-panel-box label { font-size: 12.5px; font-weight: 500; color: rgba(240, 244, 250, 0.9); }
+.setup-panel-box select {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(12, 13, 17, 0.85);
+  color: #f8fafc;
+  font-family: var(--nexora-font-family);
+  font-size: 13px;
+}
+.setup-panel-box select:focus { outline: none; border-color: rgba(240, 244, 250, 0.68); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.10); }
 .setup-input-row { display: flex; align-items: center; gap: 8px; }
 .setup-input-row input {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 10px 12px;
+  height: 38px;
+  padding: 0 13px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(10, 10, 13, 0.65);
-  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  background: rgba(10, 11, 15, 0.76);
+  color: #ffffff;
   font-family: var(--nexora-font-family);
   font-size: 13px;
 }
-.setup-input-row input:focus { outline: none; border-color: rgba(255, 168, 76, 0.75); }
+.setup-input-row input:focus {
+  outline: none;
+  border-color: rgba(240, 244, 250, 0.75);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.11);
+}
 .setup-inline-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .setup-status-banner {
   padding: 10px 13px;
@@ -1343,54 +1424,160 @@ html.is-maximized .nexora-app-shell { width:100vw !important; height:100vh !impo
   line-height: 1.45;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(236, 240, 246, 0.88);
 }
 .setup-status-banner.ok { border-color: rgba(94, 219, 148, 0.45); background: rgba(45, 160, 95, 0.14); color: #bff5d4; }
-.setup-status-banner.warn { border-color: rgba(255, 184, 77, 0.45); background: rgba(255, 152, 48, 0.12); color: #ffe1ae; }
+.setup-status-banner.warn { border-color: rgba(255, 255, 255, 0.28); background: rgba(255, 255, 255, 0.07); color: #e8edf4; }
 .setup-status-banner.err { border-color: rgba(255, 107, 118, 0.5); background: rgba(215, 55, 68, 0.16); color: #ffc6cb; }
+
 .setup-meter-track {
   width: 100%;
   height: 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.09);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 .setup-meter-fill {
   height: 100%;
   width: 0%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #ff8c2e, #ffcf6b, #7ee7a8);
+  background: linear-gradient(90deg, rgba(160, 170, 184, 0.85), rgba(248, 250, 252, 0.96));
   transition: width 0.08s linear;
 }
+.setup-wizard-card input[type="checkbox"] { accent-color: #d8dee8; }
+.setup-wizard-card .setting-toggle input:checked + .toggle-slider {
+  background: rgba(226, 232, 240, 0.45);
+  border-color: rgba(255, 255, 255, 0.65);
+}
+
+/* ---- Polished Primary & Secondary Silver/Dark-Glass Wizard Buttons ---- */
+.setup-wizard-card .btn-primary,
+.setup-wizard-card .btn-secondary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0 20px;
+  border-radius: 999px;
+  font-family: var(--nexora-font-family);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.14s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease, opacity 0.15s ease;
+}
+
+.setup-wizard-card .btn-primary {
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(218, 224, 234, 0.88) 100%);
+  color: #0e1117;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(160, 170, 185, 0.45);
+}
+.setup-wizard-card .btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #ffffff;
+  background: linear-gradient(180deg, #ffffff 0%, rgba(232, 237, 244, 0.95) 100%);
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.44),
+    0 0 14px rgba(255, 255, 255, 0.18),
+    inset 0 1px 0 #ffffff;
+}
+.setup-wizard-card .btn-primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.setup-wizard-card .btn-secondary {
+  border: 1px solid rgba(226, 232, 240, 0.25);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.035) 100%);
+  color: #f4f6fa;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+.setup-wizard-card .btn-secondary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.45);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.06) 100%);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+.setup-wizard-card .btn-secondary:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+}
+
+.setup-wizard-card .btn-primary:focus-visible,
+.setup-wizard-card .btn-secondary:focus-visible,
+.setup-choice-card:focus-visible,
+.setup-perm-option:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.82);
+  outline-offset: 2px;
+}
+
+.setup-wizard-card .btn-primary:disabled,
+.setup-wizard-card .btn-secondary:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+.setup-wizard-card button[aria-busy="true"] {
+  cursor: wait;
+}
+
+/* ---- Assistant Appearance 4-Card Grid ---- */
 .setup-choice-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
 }
 .setup-choice-card {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 14px;
+  gap: 8px;
+  padding: 10px 8px 12px;
   border-radius: 18px;
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(255, 255, 255, 0.13);
   background: rgba(255, 255, 255, 0.03);
-  color: #fff;
+  color: #f8fafc;
   cursor: pointer;
   text-align: center;
-  transition: border-color 0.18s ease, background 0.18s ease, transform 0.15s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, transform 0.15s ease;
 }
-.setup-choice-card:hover { background: rgba(255, 255, 255, 0.07); }
+.setup-choice-card:hover {
+  background: rgba(255, 255, 255, 0.075);
+  border-color: rgba(255, 255, 255, 0.28);
+}
 .setup-choice-card.selected {
-  border-color: rgba(255, 168, 76, 0.85);
-  background: rgba(255, 148, 48, 0.12);
-  box-shadow: 0 0 24px rgba(255, 140, 46, 0.18);
+  border-color: rgba(244, 247, 252, 0.82);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.36), 0 0 18px rgba(255, 255, 255, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
-.setup-preview-wrap { width: 170px; height: 150px; border-radius: 14px; overflow: hidden; background: rgba(8, 8, 10, 0.55); flex: none; position: relative; }
-.setup-preview-canvas { width: 170px; height: 150px; display: block; }
+.setup-choice-card strong { font-size: 13px; font-weight: 600; color: #ffffff; }
+.setup-choice-card small { font-size: 11px; line-height: 1.4; color: rgba(255, 255, 255, 0.68); }
+.setup-preview-wrap {
+  width: 100%;
+  aspect-ratio: 340 / 300;
+  border-radius: 14px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.06), rgba(6, 7, 10, 0.85) 75%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  flex: none;
+  position: relative;
+}
+.setup-preview-canvas { width: 100%; height: 100%; display: block; }
+
+/* ---- Permissions Step Cards ---- */
 .setup-perm-list { display: flex; flex-direction: column; gap: 10px; }
 .setup-perm-option {
   display: flex;
@@ -1399,29 +1586,38 @@ html.is-maximized .nexora-app-shell { width:100vw !important; height:100vh !impo
   width: 100%;
   padding: 12px 15px;
   border-radius: 15px;
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(255, 255, 255, 0.13);
   background: rgba(255, 255, 255, 0.03);
-  color: #fff;
+  color: #f8fafc;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.18s ease, background 0.18s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
-.setup-perm-option:hover { background: rgba(255, 255, 255, 0.07); }
+.setup-perm-option:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.28);
+}
 .setup-perm-option.selected {
-  border-color: rgba(255, 168, 76, 0.85);
-  background: rgba(255, 148, 48, 0.12);
+  border-color: rgba(244, 247, 252, 0.82);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.04));
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
-.setup-perm-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.setup-perm-title-row strong { font-size: 13.5px; font-weight: 600; }
+.setup-perm-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
+.setup-perm-title-row strong { font-size: 13.5px; font-weight: 600; color: #ffffff; }
 .setup-perm-badge {
   font-size: 10.5px;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 2px 9px;
   border-radius: 999px;
-  background: rgba(255, 184, 77, 0.18);
-  color: #ffd085;
+  background: rgba(255, 255, 255, 0.10);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  white-space: nowrap;
 }
 .setup-perm-desc { font-size: 12px; line-height: 1.48; color: rgba(255, 255, 255, 0.72); }
+
+/* ---- Summary & Footer ---- */
 .setup-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1431,23 +1627,29 @@ html.is-maximized .nexora-app-shell { width:100vw !important; height:100vh !impo
   padding: 11px 13px;
   border-radius: 13px;
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   display: flex;
   flex-direction: column;
   gap: 3px;
+  min-width: 0;
 }
+.setup-summary-item-wide { grid-column: span 2; }
 .setup-summary-item span { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255, 255, 255, 0.56); }
-.setup-summary-item strong { font-size: 13px; font-weight: 600; color: #fff; }
+.setup-summary-item strong { font-size: 13px; font-weight: 600; color: #ffffff; overflow-wrap: anywhere; }
+
 .setup-wizard-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 14px 24px 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(14, 14, 18, 0.55);
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(14, 15, 19, 0.62);
+  flex-shrink: 0;
 }
 .setup-footer-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+
+/* ---- Settings Support & Audio Helpers (Unchanged main app helpers) ---- */
 .update-progress-wrap { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .update-progress-bar { width: 100%; height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.09); overflow: hidden; }
 .update-progress-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #ff8c2e, #ffd07b); transition: width 0.16s ease; }
@@ -1472,191 +1674,27 @@ html.is-maximized .nexora-app-shell { width:100vw !important; height:100vh !impo
 }
 .audio-sfx-item { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); }
 .audio-sfx-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: rgba(255, 255, 255, 0.88); }
+
 @keyframes setupFadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes setupOrbPulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 38px rgba(255, 140, 46, 0.42), inset 0 0 18px rgba(255, 240, 200, 0.65); }
-  50% { transform: scale(1.04); box-shadow: 0 0 54px rgba(255, 155, 62, 0.6), inset 0 0 22px rgba(255, 245, 215, 0.8); }
+@keyframes setupBrandFloat {
+  0%, 100% { transform: translateY(0); box-shadow: 0 14px 32px rgba(0, 0, 0, 0.52), 0 0 22px rgba(226, 232, 240, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+  50% { transform: translateY(-2px); box-shadow: 0 18px 38px rgba(0, 0, 0, 0.58), 0 0 30px rgba(255, 255, 255, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
 }
 
-/* ==========================================================================
-   NEXORA Setup Wizard — Glassmorphism v2 (ice/cyan palette, no orange)
-   Glass pill buttons + glass orb emblem + 4-way appearance picker
-   ========================================================================== */
-.setup-wizard-card {
-  --sw-cyan: 120, 220, 255;
-  --sw-cyan-deep: 70, 170, 255;
-  --sw-glass-border: rgba(255, 255, 255, 0.26);
-  background:
-    radial-gradient(120% 80% at 12% 0%, rgba(var(--sw-cyan), 0.10), transparent 55%),
-    linear-gradient(160deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.025)),
-    rgba(20, 22, 28, 0.82);
-  -webkit-backdrop-filter: blur(26px) saturate(150%);
-  backdrop-filter: blur(26px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+@media (max-width: 720px) {
+  .setup-wizard-overlay { padding: 12px 14px 16px; }
+  .setup-wizard-header { padding: 14px 18px 10px; }
+  .setup-wizard-body { padding: 16px 18px; }
+  .setup-wizard-footer { padding: 12px 18px 14px; }
+  .setup-choice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .setup-preview-wrap { max-width: 170px; margin: 0 auto; }
 }
-.setup-wizard-overlay {
-  background: radial-gradient(circle at 50% 14%, rgba(var(--sw-cyan, 120, 220, 255), 0.14), transparent 56%), rgba(10, 12, 16, 0.86);
+@media (max-width: 560px) {
+  .setup-wizard-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .setup-summary-grid { grid-template-columns: 1fr; }
+  .setup-summary-item-wide { grid-column: auto; }
+  .setup-wizard-footer { flex-wrap: wrap; }
 }
-.setup-step-kicker { color: rgb(var(--sw-cyan)); }
-.setup-welcome-subtitle { color: rgba(190, 235, 255, 0.95); }
-.setup-step-dot.done { background: rgba(var(--sw-cyan), 0.5); }
-.setup-step-dot.active {
-  background: linear-gradient(90deg, rgba(var(--sw-cyan-deep), 0.95), rgba(190, 245, 255, 0.95));
-  box-shadow: 0 0 10px rgba(var(--sw-cyan), 0.55);
+@media (prefers-reduced-motion: reduce) {
+  .setup-brand-emblem { animation: none; }
 }
-
-/* ---- Glass orb emblem (welcome + ready) ---- */
-.setup-orb-emblem {
-  background:
-    radial-gradient(ellipse 34% 22% at 32% 22%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 100%),
-    radial-gradient(circle at 50% 78%, rgba(var(--sw-cyan), 0.60) 0%, rgba(var(--sw-cyan-deep), 0.22) 48%, transparent 72%),
-    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.12), rgba(120, 200, 255, 0.10) 60%, rgba(255, 255, 255, 0.04) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.42);
-  -webkit-backdrop-filter: blur(10px) saturate(170%);
-  backdrop-filter: blur(10px) saturate(170%);
-  box-shadow:
-    0 0 38px rgba(var(--sw-cyan), 0.38),
-    0 10px 30px rgba(0, 0, 0, 0.45),
-    inset 0 2px 3px rgba(255, 255, 255, 0.65),
-    inset 0 -10px 22px rgba(var(--sw-cyan), 0.32);
-  animation: setupGlassOrbPulse 3.6s ease-in-out infinite;
-}
-.setup-orb-emblem::after {
-  content: "";
-  position: absolute;
-  left: 22%;
-  right: 22%;
-  bottom: 6%;
-  height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(190, 250, 255, 0.95), transparent);
-  filter: blur(1px);
-}
-@keyframes setupGlassOrbPulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 34px rgba(var(--sw-cyan, 120, 220, 255), 0.32), 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 2px 3px rgba(255, 255, 255, 0.65), inset 0 -10px 22px rgba(120, 220, 255, 0.30); }
-  50% { transform: scale(1.035); box-shadow: 0 0 52px rgba(120, 220, 255, 0.52), 0 12px 34px rgba(0, 0, 0, 0.45), inset 0 2px 4px rgba(255, 255, 255, 0.8), inset 0 -12px 26px rgba(120, 220, 255, 0.42); }
-}
-
-/* ---- Glass pill buttons (reference: translucent capsule, top-left specular, cyan bottom glint) ---- */
-.setup-wizard-card .btn-primary,
-.setup-wizard-card .btn-secondary {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 38px;
-  padding: 0 22px;
-  border-radius: 999px;
-  border: 1px solid var(--sw-glass-border);
-  background:
-    radial-gradient(ellipse 70% 120% at 50% 130%, rgba(var(--sw-cyan), 0.30), transparent 70%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.06) 55%, rgba(255, 255, 255, 0.10) 100%);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
-  backdrop-filter: blur(14px) saturate(160%);
-  color: #f4fbff;
-  font-family: var(--nexora-font-family);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
-  cursor: pointer;
-  box-shadow:
-    0 6px 18px rgba(0, 0, 0, 0.38),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -1px 0 rgba(var(--sw-cyan), 0.45),
-    inset 0 0 14px rgba(255, 255, 255, 0.05);
-  transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-}
-/* top-left specular streak */
-.setup-wizard-card .btn-primary::before,
-.setup-wizard-card .btn-secondary::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  top: 0;
-  left: 12%;
-  width: 34%;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent);
-  filter: blur(0.6px);
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
-}
-/* bottom cyan glint */
-.setup-wizard-card .btn-primary::after,
-.setup-wizard-card .btn-secondary::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  bottom: 0;
-  left: 28%;
-  right: 28%;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(150, 245, 255, 0.95), transparent);
-  filter: blur(0.5px);
-  box-shadow: 0 0 8px rgba(var(--sw-cyan), 0.8);
-}
-.setup-wizard-card .btn-primary {
-  border-color: rgba(190, 240, 255, 0.5);
-  background:
-    radial-gradient(ellipse 70% 120% at 50% 130%, rgba(var(--sw-cyan-deep), 0.55), transparent 70%),
-    linear-gradient(180deg, rgba(var(--sw-cyan), 0.34) 0%, rgba(var(--sw-cyan-deep), 0.14) 60%, rgba(var(--sw-cyan), 0.2) 100%);
-}
-.setup-wizard-card .btn-primary:hover,
-.setup-wizard-card .btn-secondary:hover {
-  transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.42),
-    0 0 20px rgba(var(--sw-cyan), 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    inset 0 -1px 0 rgba(var(--sw-cyan), 0.7);
-}
-.setup-wizard-card .btn-primary:active,
-.setup-wizard-card .btn-secondary:active { transform: translateY(0) scale(0.98); }
-.setup-wizard-card .btn-primary:focus-visible,
-.setup-wizard-card .btn-secondary:focus-visible {
-  outline: 2px solid rgba(var(--sw-cyan), 0.85);
-  outline-offset: 2px;
-}
-.setup-wizard-card .btn-primary:disabled,
-.setup-wizard-card .btn-secondary:disabled {
-  opacity: 0.42;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
-}
-.setup-input-row .btn-secondary { min-height: 40px; padding: 0 18px; }
-
-/* ---- Inputs / banners / meter / selection (cyan instead of orange) ---- */
-.setup-input-row input:focus { border-color: rgba(var(--sw-cyan), 0.8); box-shadow: 0 0 0 3px rgba(var(--sw-cyan), 0.15); }
-.setup-status-banner.warn { border-color: rgba(var(--sw-cyan), 0.4); background: rgba(var(--sw-cyan-deep), 0.12); color: #cdefff; }
-.setup-meter-fill { background: linear-gradient(90deg, rgb(var(--sw-cyan-deep)), rgb(var(--sw-cyan)), #7ee7c8); }
-.setup-perm-badge { background: rgba(var(--sw-cyan), 0.16); color: #bfeaff; border: 1px solid rgba(var(--sw-cyan), 0.3); }
-.setup-choice-card,
-.setup-perm-option {
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
-}
-.setup-choice-card.selected,
-.setup-perm-option.selected {
-  border-color: rgba(var(--sw-cyan), 0.85);
-  background: linear-gradient(180deg, rgba(var(--sw-cyan), 0.16), rgba(var(--sw-cyan-deep), 0.06));
-  box-shadow: 0 0 24px rgba(var(--sw-cyan), 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-}
-.setup-perm-option.selected .setup-perm-title-row strong { color: #fff; }
-.setup-wizard-card input[type="checkbox"] { accent-color: rgb(var(--sw-cyan-deep)); }
-
-/* ---- Appearance step: 3 orbs + robot ---- */
-.setup-choice-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.setup-choice-card { padding: 10px 8px 12px; gap: 8px; }
-.setup-choice-card strong { font-size: 13px; font-weight: 600; }
-.setup-choice-card small { font-size: 11px; line-height: 1.4; color: rgba(255, 255, 255, 0.68); }
-.setup-preview-wrap { width: 100%; height: auto; aspect-ratio: 340 / 300; border-radius: 14px; background: rgba(6, 8, 12, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); }
-.setup-preview-canvas { width: 100%; height: 100%; }
-@media (max-width: 640px) { .setup-choice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (prefers-reduced-motion: reduce) { .setup-orb-emblem { animation: none; } }

@@ -35,14 +35,31 @@ function loadScript(src) {
   });
 }
 let loadPromise = null;
+let cachedFbxBuffer = null;
+
+function readRobotFbxBuffer() {
+  if (cachedFbxBuffer) return cachedFbxBuffer.slice(0);
+  const b64 = window.NEXORA_ROBOT_FBX_B64;
+  if (!b64) return null;
+  const bin = atob(b64);
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  cachedFbxBuffer = u8.buffer;
+  window.NEXORA_ROBOT_FBX_B64 = null; // free the 10 MB base64 string while retaining reusable binary cache
+  return cachedFbxBuffer.slice(0);
+}
+
 export function loadRobotRuntime() {
-  if (!loadPromise) loadPromise = SCRIPTS.reduce((p, s) => p.then(() => loadScript(ASSET(s))), Promise.resolve());
+  if (!loadPromise) {
+    loadPromise = SCRIPTS.reduce((p, s) => p.then(() => loadScript(ASSET(s))), Promise.resolve())
+      .catch((err) => { loadPromise = null; throw err; });
+  }
   return loadPromise;
 }
 
 export class RobotOrb {
   constructor() {
-    this.ready = false; this.failed = false; this.error = null;
+    this.ready = false; this.failed = false; this.error = null; this.disposed = false;
     this.view = 'auto';            // auto | full | bust | face
     this.paintName = 'noir';     // body paint preset (ROBOT_PAINTS)
     this.bodyActs = true;          // an expression also plays the matching body animation
@@ -70,8 +87,53 @@ export class RobotOrb {
   }
 
   load() {
-    this.loading = loadRobotRuntime().then(() => this.build()).then(() => { this.ready = true; this.onReady?.(); }).catch((e) => { this.failed = true; this.error = e; console.error('[NEXORA robot]', e); });
+    this.loading = loadRobotRuntime()
+      .then(async () => {
+        if (this.disposed) return;
+        if (!cachedFbxBuffer && !window.NEXORA_ROBOT_FBX_B64) {
+          await loadScript(ASSET('robot/robot-fbx.js'));
+        }
+        if (this.disposed) return;
+        this.build();
+        if (this.disposed) {
+          this.dispose();
+          return;
+        }
+        this.ready = true;
+        this.onReady?.();
+      })
+      .catch((e) => {
+        if (this.disposed) return;
+        this.failed = true;
+        this.error = e;
+        console.error('[NEXORA robot] 3D robot runtime load failed:', e);
+      });
     return this.loading;
+  }
+
+  dispose() {
+    this.disposed = true;
+    this.ready = false;
+    try { this.envRT?.dispose?.(); } catch {}
+    try { this.tex?.dispose?.(); } catch {}
+    try {
+      this.fbx?.traverse?.((o) => {
+        o.geometry?.dispose?.();
+        if (Array.isArray(o.material)) o.material.forEach((m) => m?.dispose?.());
+        else o.material?.dispose?.();
+      });
+    } catch {}
+    try {
+      this.renderer?.dispose?.();
+      this.renderer?.forceContextLoss?.();
+    } catch {}
+    this.envRT = null;
+    this.tex = null;
+    this.mesh = null;
+    this.fbx = null;
+    this.scene = null;
+    this.renderer = null;
+    this.gl = null;
   }
 
   /* ---------- scene (ported from the Animation Lab) ---------- */
@@ -82,18 +144,17 @@ export class RobotOrb {
     const { renderer, gl } = this._makeRenderer(q);
     const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(32, 1, .05, 100);
     // v0.3.14c: low ambient so the body stays PURE BLACK; only soft specular sheen shows the shape (like the reference render).
-    scene.add(new THREE.HemisphereLight(0xaab8cc, 0x000000, .22));
-    const key = new THREE.DirectionalLight(0xffffff, 1.1); key.position.set(2.5, 4, 5); scene.add(key);
-    const rim = new THREE.DirectionalLight(0xcfe4ff, 1.4); rim.position.set(-4, 3, -4); scene.add(rim);
-    const rim2 = new THREE.DirectionalLight(0xcfe4ff, .9); rim2.position.set(4, 2, -4); scene.add(rim2);
+    scene.add(new THREE.HemisphereLight(0xaab8cc, 0x000000, .28));
+    const key = new THREE.DirectionalLight(0xffffff, 1.25); key.position.set(2.5, 4, 5); scene.add(key);
+    const rim = new THREE.DirectionalLight(0xe2e8f0, 1.5); rim.position.set(-4, 3, -4); scene.add(rim);
+    const rim2 = new THREE.DirectionalLight(0xe2e8f0, 1.0); rim2.position.set(4, 2, -4); scene.add(rim2);
     const spill = new THREE.PointLight(0xffffff, .5, 2.5); scene.add(spill);
     Object.assign(this, { renderer, scene, cam, spill, gl, V3 });
 
-    const b64 = window.NEXORA_ROBOT_FBX_B64; if (!b64) throw new Error('Robot model data missing');
-    const bin = atob(b64), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-    window.NEXORA_ROBOT_FBX_B64 = null;     // free the 10 MB string
+    const fbxBuf = readRobotFbxBuffer();
+    if (!fbxBuf) throw new Error('Robot model data missing');
     const mgr = new THREE.LoadingManager(); mgr.setURLModifier((u) => (/^(blob|data):/.test(u) ? u : BLANK_PX));   // no external texture requests
-    const fbx = new THREE.FBXLoader(mgr).parse(u8.buffer, '');
+    const fbx = new THREE.FBXLoader(mgr).parse(fbxBuf, '');
     const bones = {}; let mesh = null;
     fbx.traverse((o) => { if (o.isSkinnedMesh) mesh = o; if (o.isBone) bones[o.name] = o; });
     const old = Array.isArray(mesh.material) ? mesh.material : [mesh.material]; let si = -1;
@@ -249,8 +310,9 @@ export class RobotOrb {
   /* ---------- per frame ---------- */
   /** s = { px, w, h, state, rgb, level, mic, out, t } */
   draw(ctx, s) {
+    if (this.disposed) return;
     const w = s.w || s.px, h = s.h || s.px, px = s.px, ox = (w - px) / 2, oy = (h - px) / 2;
-    const rgb = s.rgb || [127, 227, 255], css = (a) => 'rgba(' + rgb.map(Math.round).join(',') + ',' + a + ')';
+    const rgb = s.rgb || [215, 223, 235], css = (a) => 'rgba(' + rgb.map(Math.round).join(',') + ',' + a + ')';
     if (!this.ready) {                // loading ring
       const cx = ox + px / 2, cy = oy + px / 2, t = performance.now() / 1000;
       ctx.strokeStyle = css(.8); ctx.lineWidth = Math.max(2, px * .02); ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(cx, cy, px * .12, t * 4, t * 4 + 4.2); ctx.stroke();
