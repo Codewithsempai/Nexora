@@ -28,18 +28,20 @@ connections to `generativelanguage.googleapis.com`, authenticated with your key.
 Screenshots are held in memory for the request and are **never written to disk
 by NEXORA**.
 
-### Update check (GitHub, not Google)
+### Update check & Auto-Update (GitHub, not Google)
 
-Installed builds check **GitHub Releases** for a newer version of NEXORA: one
-anonymous `GET` request to `api.github.com` (the release list of the NEXORA
-repository) shortly after start-up and then about once a day. No API key,
-account, memories, audio or identifiers are sent; GitHub sees your IP address
-and a `NEXORA/<version>` user-agent, as with any web request. If a newer version
-exists, NEXORA only **shows a notice**. It never downloads or installs anything
-by itself; you open the release page and install it manually.
+Installed builds check **GitHub Releases** (`codewithsempai-daya/nexora`) for a
+newer stable version shortly after start-up and periodically every 6 hours when
+**Automatic Updates** is turned on. No API key, memories, audio, or personal
+identifiers are sent; GitHub sees your IP address and updater request headers as
+with any HTTPS download. When a newer stable release exists and Automatic Updates
+is enabled, NEXORA downloads the verified installer package in the background,
+verifies SHA-512 checksums (and Authenticode publisher signature on signed
+builds), and restarts to install **only when you confirm Update Now**. User
+settings, encrypted API keys, and memory in `%APPDATA%\nexora` are preserved.
 
-You can switch this off in **Settings -> Support & Updates**. Development builds
-(`npm start`) never check on their own.
+You can switch Automatic Updates off in **Settings -> Support & Updates**.
+Development builds (`npm start`) only check read-only when you click **Check for Updates**.
 
 ### What Google does with it
 Google receives this data as the provider of the Gemini API and handles it under
@@ -108,5 +110,5 @@ in the same release and the change is listed in the release notes.
 
 ## 7. Contact
 
-Privacy questions or requests: open a GitHub issue (no personal data please) or
-email `<your-contact-email>`.
+Privacy questions or requests: open a GitHub issue in `codewithsempai-daya/nexora`
+(`https://github.com/codewithsempai-daya/nexora/issues`, no personal data please).

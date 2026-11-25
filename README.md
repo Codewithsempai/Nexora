@@ -91,27 +91,36 @@ macOS support is in design: see `platforms/apple/`.
 
 ## Updates
 
-**Update notice:** installed builds check GitHub Releases for updates. When a newer version exists NEXORA shows a "New NEXORA update" notice with **View release**, **Later** and **Skip this version**, and you install it manually. Nothing is downloaded or installed automatically. It can be switched off in **Settings -> Support & Updates**, and `PRIVACY.md` discloses it. You can also press **Check now** in the same place.
+Installed Windows builds use `electron-updater` against GitHub Releases (`codewithsempai-daya/nexora`). When **Automatic Updates** is enabled in **Settings -> Support & Updates**, NEXORA checks automatically after launch and periodically every 6 hours, displays release notes and download progress, and installs on confirmation via **Update Now** without overwriting `%APPDATA%\nexora` (`userData`). Development builds can check for new releases manually via **Check for Updates**.
+
+## Windows Installer & Build
+
+To build the Windows x64 NSIS installer (`dist/NEXORA-Setup-x64.exe` and `dist/latest.yml`):
+
+```bash
+npm install
+npm run dist
+```
+
+See [docs/BUILD_AND_RELEASE.md](docs/BUILD_AND_RELEASE.md) for optional Windows code-signing environment variables (`CSC_LINK`, `CSC_KEY_PASSWORD`), SmartScreen notes for unsigned builds, the GitHub Release publishing workflow, and Windows audio session isolation / Communications ducking guidance.
 
 ## Get started
 
-1. Install [Node.js](https://nodejs.org) 20 or newer.
-2. Get a free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey).
-3. Run NEXORA:
+1. Install NEXORA using `NEXORA-Setup-x64.exe` (or run from source with Node.js 20+ and Rust).
+2. On first launch, the **Guided Setup Wizard** walks you through validating & encrypting your Gemini API key, testing your microphone, calibrating the offline ONNX wake word, choosing NEXORA Orb or NEXORA Robot, and picking your Computer Action Permission level (Level 1 Ask Every Time by default).
+
+To run from source:
 
    ```
    npm install
    npm start
    ```
 
-   Or straight from Cargo, which installs Electron on the first run:
+   Or straight from Cargo, which builds and launches the desktop shell:
 
    ```
    cargo run -- --desktop
    ```
-
-4. Open **Settings → Gemini**, paste your key and save. It is stored encrypted with your operating system's secure storage.
-5. Turn on **Wake standby** in Settings, then say "Hey Nexora".
 
 If Electron's install script is blocked on your machine, run `node node_modules/electron/install.js` once.
 

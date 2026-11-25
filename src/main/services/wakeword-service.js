@@ -4,11 +4,19 @@
    back to running the same engine inside the main process, so wake standby never depends on a network call.
    ========================================================================== */
 'use strict';
+const fs = require('fs');
 const path = require('path');
 const { Worker } = require('worker_threads');
 const { OnnxWakeEngine, loadModelFiles } = require('./wakeword-onnx');
 
-const DEFAULT_DIR = path.join(__dirname, '..', '..', '..', 'assets', 'wakeword');
+function resolveUnpackedPath(targetPath) {
+  const normalized = String(targetPath || '');
+  if (!normalized.includes('app.asar')) return normalized;
+  const unpacked = normalized.replace(/app\.asar(?=[\\/]|$)/, 'app.asar.unpacked');
+  return fs.existsSync(unpacked) ? unpacked : normalized;
+}
+
+const DEFAULT_DIR = resolveUnpackedPath(path.join(__dirname, '..', '..', '..', 'assets', 'wakeword'));
 
 class WakeWordService {
   /** @param {{dir?: string, threshold?: number, onWake: (hit: {name: string, word: string, score: number}) => void, onError?: (message: string) => void}} o */
@@ -26,7 +34,8 @@ class WakeWordService {
       const fail = (message) => { if (settled) return; settled = true; this.cleanup(); reject(new Error(message)); };
       const ok = (words) => { if (settled) return; settled = true; this.ready = true; this.words = words; resolve(words); };
       try {
-        this.worker = new Worker(path.join(__dirname, 'wakeword-worker.js'), { workerData: { dir: this.dir, threshold: this.threshold } });
+        const workerFile = resolveUnpackedPath(path.join(__dirname, 'wakeword-worker.js'));
+        this.worker = new Worker(workerFile, { workerData: { dir: resolveUnpackedPath(this.dir), threshold: this.threshold } });
       } catch (error) { this.startInProcess(ok, fail, error); return; }
       this.worker.on('message', (msg) => {
         if (msg.type === 'ready') ok(msg.words);

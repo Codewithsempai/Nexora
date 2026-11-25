@@ -17,7 +17,10 @@ const { pickExtractModels } = require('../services/memory-extractor');
 const { TtsService } = require('../services/tts-service');
 const electronApi = require('electron');
 const { AutonomyService, registerAutonomyIpc } = require('../autonomy');
-const { UpdateChecker, isReleaseUrl } = require('../services/update-checker');
+const { isReleaseUrl } = require('../services/update-checker');
+const { UpdaterService } = require('../services/updater');
+const { getWindowsAudioDiagnostics, openWindowsCommunicationsSettings } = require('../services/audio-diagnostics');
+const { ACTIONS } = require('../autonomy/actions');
 
 function registerIpcHandlers(windowManager, configService, sidecarManager, hotkeyService, popupManager, voiceService, suppliedModelDirectory, extras = {}) {
   const reminderService = extras.reminderService || null;
@@ -152,10 +155,46 @@ function registerIpcHandlers(windowManager, configService, sidecarManager, hotke
   });
   ipcMain.handle('hotkey:update', (event, shortcut) => isTrustedRenderer(event) && typeof shortcut === 'string' ? hotkeyService.updateShortcut(shortcut) : false);
 
+  async function validateGeminiApiKey(rawKey) {
+    const key = typeof rawKey === 'string' ? rawKey.trim() : '';
+    if (!key || key.length < 16 || /[^\x21-\x7E]/.test(key)) {
+      return { valid: false, error: 'Please paste a valid Gemini API key.' };
+    }
+    try {
+      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1', {
+        method: 'GET',
+        headers: { 'x-goog-api-key': key },
+        signal: AbortSignal.timeout(10000),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        return { valid: true, modelCount: Array.isArray(data?.models) ? data.models.length : 1 };
+      }
+      if (res.status === 429) {
+        return { valid: true, rateLimited: true, warning: 'API key recognized (Gemini quota/rate limit active right now).' };
+      }
+      if (res.status === 400 || res.status === 401 || res.status === 403) {
+        return { valid: false, error: 'API key was rejected by Google Gemini (invalid or lacks permissions).' };
+      }
+      return { valid: false, error: `Gemini returned HTTP ${res.status}. Please retry.` };
+    } catch (error) {
+      return { valid: false, networkError: true, error: 'Could not reach Gemini API (check your internet connection and retry).' };
+    }
+  }
+
   // Gemini credential bridge. Only encrypted bytes are written to disk.
   ipcMain.handle('ai:key:save', (event, key) => isTrustedRenderer(event) ? saveGeminiKey(key) : { success: false, error: 'Untrusted renderer.' });
   ipcMain.handle('ai:key:clear', (event) => isTrustedRenderer(event) ? clearGeminiKey() : false);
   ipcMain.handle('ai:key:status', (event) => isTrustedRenderer(event) ? ({ configured: !!readGeminiKey(), secureStorage: safeStorage.isEncryptionAvailable() }) : ({ configured: false, secureStorage: false }));
+  ipcMain.handle('ai:key:validate', async (event, key) => isTrustedRenderer(event) ? validateGeminiApiKey(key) : { valid: false, error: 'Untrusted renderer.' });
+  ipcMain.handle('ai:key:validate-stored', async (event) => {
+    if (!isTrustedRenderer(event)) return { valid: false, error: 'Untrusted renderer.' };
+    const stored = readGeminiKey();
+    if (!stored) return { valid: false, error: 'No Gemini API key is saved yet.' };
+    return validateGeminiApiKey(stored);
+  });
+  ipcMain.handle('audio:diagnostics', async (event) => isTrustedRenderer(event) ? getWindowsAudioDiagnostics() : { error: 'Untrusted renderer.' });
+  ipcMain.handle('audio:open-communications', async (event) => isTrustedRenderer(event) ? openWindowsCommunicationsSettings() : { success: false, error: 'Untrusted renderer.' });
   ipcMain.handle('ai:models:list', async (event, force = false) => {
     if (!isTrustedRenderer(event)) return { success: false, error: 'Untrusted renderer.' };
     const key = readGeminiKey();
@@ -166,6 +205,19 @@ function registerIpcHandlers(windowManager, configService, sidecarManager, hotke
   // Live voice and wake-word controls. Only the primary renderer may stream microphone PCM.
   ipcMain.handle('voice:wake:enable', (event) => isTrustedRenderer(event) && voiceService ? voiceService.enableWake() : ({ success: false, error: 'Untrusted renderer or voice service unavailable.' }));
   ipcMain.handle('voice:wake:disable', (event) => isTrustedRenderer(event) && voiceService ? voiceService.disableWake() : ({ success: false, error: 'Untrusted renderer or voice service unavailable.' }));
+  ipcMain.handle('voice:wake:test-start', async (event) => {
+    if (!isTrustedRenderer(event) || !voiceService) return { success: false, error: 'Untrusted renderer or voice service unavailable.' };
+    voiceService.setWakeTestMode?.(true);
+    return voiceService.enableWake();
+  });
+  ipcMain.handle('voice:wake:test-stop', async (event, keepEnabled = null) => {
+    if (!isTrustedRenderer(event) || !voiceService) return { success: false };
+    voiceService.setWakeTestMode?.(false);
+    const shouldKeep = keepEnabled === true || (keepEnabled === null && configService.get('voice.wakeWordEnabled') === true);
+    if (!shouldKeep) await voiceService.disableWake();
+    return { success: true };
+  });
+  voiceService?.on?.('wake-test-hit', (hit) => pushToMain('voice:wake-test-hit', hit));
   ipcMain.handle('voice:live:start', (event) => isTrustedRenderer(event) && voiceService ? voiceService.startLive() : ({ success: false, error: 'Untrusted renderer or voice service unavailable.' }));
   ipcMain.handle('voice:live:stop', (event) => isTrustedRenderer(event) && voiceService ? voiceService.stopLive({ returnToStandby: voiceService.wakeEnabled, hidePopup: true }) : ({ success: false, error: 'Untrusted renderer or voice service unavailable.' }));
   ipcMain.handle('voice:orb-profile', (event, profile) => isTrustedRenderer(event) && voiceService ? voiceService.setOrbProfile(profile) : ({ success: false, error: 'Untrusted renderer or voice service unavailable.' }));
@@ -333,18 +385,64 @@ function registerIpcHandlers(windowManager, configService, sidecarManager, hotke
     activeRequests.get(requestKey(event.sender.id, requestId))?.abort(new Error('Request cancelled by user.'));
   });
 
-  // v0.3.36 — update notifier: checks GitHub Releases and only SHOWS a notice; the user installs manually.
-  const updater = new UpdateChecker({
-    currentVersion: app.getVersion(), configService, isPackaged: app.isPackaged,
-    onAvailable: (info) => pushToMain('update:available', info),
+  // Auto-updater (electron-updater + GitHub Releases for codewithsempai-daya/nexora).
+  const updater = new UpdaterService({
+    app,
+    currentVersion: app?.getVersion?.() || configService.get('version') || '0.3.25',
+    configService,
+    isPackaged: !!app?.isPackaged,
+    onEvent: (channel, payload) => pushToMain(channel, payload),
+    onBeforeInstall: async () => {
+      try { global.__nexoraUpdating = true; } catch { /* ignore */ }
+      try { windowManager.isQuitting = true; } catch { /* ignore */ }
+      try { voiceService?.dispose?.(); } catch { /* ignore */ }
+      try { sidecarManager?.stop?.(); } catch { /* ignore */ }
+      try { popupManager?.destroy?.(); } catch { /* ignore */ }
+    },
   });
-  ipcMain.handle('update:check', async (event) => isTrustedRenderer(event) ? { ...(await updater.check({ manual: true })), current: app.getVersion() } : { status: 'error', error: 'Untrusted renderer.' });
-  ipcMain.handle('update:state', (event) => isTrustedRenderer(event) ? { ...updater.last, current: app.getVersion(), enabled: updater.enabled(), packaged: app.isPackaged } : null);
-  ipcMain.handle('update:open', (event, url) => { if (!isTrustedRenderer(event) || !isReleaseUrl(url)) return false; require('electron').shell.openExternal(url); return true; });
-  ipcMain.handle('update:skip', (event, version) => isTrustedRenderer(event) ? updater.skip(version) : false);
+  ipcMain.handle('update:check', async (event) => isTrustedRenderer(event) ? updater.check({ manual: true }) : { status: 'error', error: 'Untrusted renderer.' });
+  ipcMain.handle('update:download', async (event) => isTrustedRenderer(event) ? updater.downloadUpdate() : { success: false, error: 'Untrusted renderer.' });
+  ipcMain.handle('update:install', async (event) => isTrustedRenderer(event) ? updater.installAndRestart() : { success: false, error: 'Untrusted renderer.' });
+  ipcMain.handle('update:state', (event) => isTrustedRenderer(event) ? updater.getState() : null);
+  ipcMain.handle('update:setAuto', (event, enabled) => isTrustedRenderer(event) ? updater.setAutoUpdate(enabled) : null);
+  ipcMain.handle('update:open', (event, url) => {
+    const target = url || updater.getState().releaseUrl;
+    if (!isTrustedRenderer(event) || !isReleaseUrl(target)) return false;
+    require('electron').shell.openExternal(target);
+    return true;
+  });
+  ipcMain.handle('update:skip', (event, version) => isTrustedRenderer(event) ? updater.skipVersion(version) : false);
   const baseConfigSet = configService.set.bind(configService);
-  configService.set = (keyPath, value) => { const ok = baseConfigSet(keyPath, value); if (ok && keyPath === 'updates.checkOnStart') updater.onConfig(); return ok; };
+  configService.set = (keyPath, value) => {
+    const ok = baseConfigSet(keyPath, value);
+    if (ok && (keyPath === 'updates.checkOnStart' || keyPath === 'updates.check' || keyPath === 'updates.autoDownload')) {
+      if (updater.isAutoCheckEnabled()) updater.scheduleTimers();
+      else updater.clearTimers();
+      updater.emitState('update:state');
+    }
+    return ok;
+  };
   updater.start();
+
+  ipcMain.handle('autonomy:apply-preset', (event, preset) => {
+    if (!isTrustedRenderer(event)) return { success: false, error: 'Untrusted renderer.' };
+    const clean = typeof preset === 'string' ? preset.replace(/-/g, '_') : '';
+    const normalized = ['ask_every_time', 'trusted_actions', 'advanced_autonomy'].includes(clean)
+      ? clean
+      : 'ask_every_time';
+    configService.set('setup.permissionPreset', normalized);
+    for (const [action, meta] of Object.entries(ACTIONS)) {
+      let level = 'ask';
+      if (normalized === 'trusted_actions') {
+        level = meta.risk === 'low' ? 'once' : 'ask';
+      } else if (normalized === 'advanced_autonomy') {
+        level = meta.risk === 'low' ? 'always' : 'once';
+      }
+      if (autonomy) autonomy.setPermission(action, level);
+      else configService.set(`autonomy.permissions.${action}`, level);
+    }
+    return { success: true, preset: normalized };
+  });
 
   // v0.3.8 — autonomy: proactive cards, memory upkeep, approved computer actions, agent tasks, screen help, watchers.
   try {

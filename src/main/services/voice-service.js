@@ -215,8 +215,21 @@ class VoiceService {
   }
 
   /** The ONNX detector heard a wake phrase. */
+  setWakeTestMode(active) {
+    this.wakeTestMode = !!active;
+    try { this.wakeWord?.reset?.(); } catch {}
+    return this.wakeTestMode;
+  }
+
   async onWakeWord(hit) {
-    if (!this.wakeEnabled || this.liveSocket || this.liveConnecting) return;
+    if (!this.wakeEnabled) return;
+    if (this.wakeTestMode) {
+      console.log(`[NEXORA Wake Test] Offline ONNX "${hit.word}" score ${Number(hit.score).toFixed(2)}`);
+      this.wakeWord?.reset();
+      this.emit('wake-test-hit', { word: hit.word, score: hit.score, at: Date.now() });
+      return;
+    }
+    if (this.liveSocket || this.liveConnecting) return;
     console.log(`[NEXORA Wake] ONNX "${hit.word}" score ${Number(hit.score).toFixed(2)} -> WAKE`);
     this.wakeWord?.reset();
     this.popupManager?.show('wake', this.configService.get('appearance.orbProfile') || 'nexora');

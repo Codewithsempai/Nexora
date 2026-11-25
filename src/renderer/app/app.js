@@ -19,6 +19,7 @@ import { MemoryPanel } from '../memory/memory-panel.js';
 import { ReminderPanel } from '../reminders/reminder-panel.js';
 import { ToastCenter } from '../components/toast.js';
 import { AutonomyPanel } from '../autonomy/autonomy-panel.js';
+import { SetupWizard } from '../setup/setup-wizard.js';
 
 export const PANELS = {
   CORE: 'core',
@@ -55,13 +56,13 @@ class NexoraApp {
   async init() {
     console.log('[NEXORA App] Booting Phase 1 Assistant...');
 
-    // 1. Initialize Audio System from saved config
+    // 1. Initialize Audio System & VoiceAudio from saved config (decoupled capture/playback)
     if (window.nexoraAPI?.config) {
       try {
         const audioCfg = await window.nexoraAPI.config.get('audio');
         if (audioCfg) {
-          this.soundSystem.setEnabled(audioCfg.enabled);
-          this.soundSystem.setMasterVolume(audioCfg.masterVolume);
+          this.soundSystem.applyConfig?.(audioCfg);
+          this.voiceAudio.applyConfig?.(audioCfg);
         }
       } catch (e) {}
     }
@@ -69,6 +70,7 @@ class NexoraApp {
     // 2. Unlock Web Audio on first user interaction
     const unlockAudio = () => {
       this.soundSystem.ensureContext();
+      this.soundSystem.resumeIfReady?.();
       window.removeEventListener('pointerdown', unlockAudio);
       window.removeEventListener('keydown', unlockAudio);
     };
@@ -172,13 +174,23 @@ class NexoraApp {
     });
 
     try { this.captionsInChat = (await window.nexoraAPI?.config?.get('voice.captionsInChat')) === true; } catch { this.captionsInChat = false; }
-    // Restore wake listening only when the user explicitly enabled it earlier.
+    // Show first-run guided setup wizard until initial setup has completed; otherwise restore wake listening if enabled.
+    let setupCompleted = true;
     try {
-      const wakeEnabled = await window.nexoraAPI?.config?.get('voice.wakeWordEnabled');
-      if (wakeEnabled === true) {
-        setTimeout(() => { void this.startWakeListening({ restore: true }); }, 900);
-      }
-    } catch {}
+      setupCompleted = (await window.nexoraAPI?.config?.get?.('setup.completed')) === true;
+    } catch {
+      setupCompleted = true;
+    }
+    if (!setupCompleted) {
+      setTimeout(() => { void this.openSetupWizard(); }, 180);
+    } else {
+      try {
+        const wakeEnabled = await window.nexoraAPI?.config?.get('voice.wakeWordEnabled');
+        if (wakeEnabled === true) {
+          setTimeout(() => { void this.startWakeListening({ restore: true }); }, 900);
+        }
+      } catch {}
+    }
 
     // 10. Startup Welcome Flourish
     setTimeout(() => {
@@ -349,6 +361,7 @@ class NexoraApp {
     const settingsContainer = document.getElementById('settingsPanelContainer');
     this.settingsPanel = new SettingsPanel(settingsContainer, {
       soundSystem: this.soundSystem,
+      voiceAudio: this.voiceAudio,
       onSound: (name) => this.playSound(name),
       onClose: () => this.setPanel(PANELS.CORE),
       onStartWake: () => this.startWakeListening(),
@@ -356,6 +369,7 @@ class NexoraApp {
       onStartLive: () => this.startLiveTalk(),
       onStopLive: () => this.stopLiveTalk(),
       onPerformanceChange: (mode) => this.orbEngine?.setPerformanceMode(mode),
+      onOpenSetupWizard: () => { void this.openSetupWizard(); },
     });
   }
 
@@ -365,21 +379,52 @@ class NexoraApp {
     this.toasts = new ToastCenter(document.getElementById('toastStack'));
     const api = window.nexoraAPI;
 
-    // Updates: a new GitHub release exists. Only SHOW it; the user installs it manually from the release page.
+    // Updates: GitHub Releases auto-updater notifications & one-click Update Now toast.
     api?.updates?.onAvailable?.((info = {}) => {
       if (!info.version) return;
+      api.updates.state?.().then((st) => {
+        if (st?.autoDownload && st?.packaged) {
+          this.updateToast?.dismiss?.();
+          this.updateToast = this.toasts.show({
+            kind: 'update', title: `NEXORA v${info.version} found`, timeout: 5500,
+            text: 'Downloading update in the background. Progress is shown in Settings → Support & Updates.',
+          });
+          return;
+        }
+        this.updateToast?.dismiss?.();
+        const actions = st?.packaged
+          ? [
+              { label: 'Download', primary: true, onClick: () => api.updates.download?.() },
+              { label: 'View release', onClick: () => api.updates.open(info.url) },
+              { label: 'Skip', onClick: () => api.updates.skip(info.version) },
+            ]
+          : [
+              { label: 'View release', primary: true, onClick: () => api.updates.open(info.url) },
+              { label: 'Later' },
+              { label: 'Skip', onClick: () => api.updates.skip(info.version) },
+            ];
+        this.updateToast = this.toasts.show({
+          kind: 'update', title: 'New NEXORA update', timeout: 0,
+          text: st?.packaged
+            ? `Version ${info.version} is available (you have v${this.currentVersion || 'older'}).`
+            : `Version ${info.version} is available (running dev build; you have v${this.currentVersion || 'older'}).`,
+          actions,
+        });
+      }).catch(() => {});
+    });
+    api?.updates?.onDownloaded?.((st = {}) => {
+      const ver = st?.downloadedVersion || st?.availableVersion || 'latest';
       this.updateToast?.dismiss?.();
       this.updateToast = this.toasts.show({
-        kind: 'update', title: 'New NEXORA update', timeout: 0,
-        text: `Version ${info.version} is available. You have v${this.currentVersion || 'older'}. Install it manually from the release page.`,
+        kind: 'update', title: `Update v${ver} ready`, timeout: 0,
+        text: 'Update downloaded and verified. Restart now to install while keeping all settings & memory.',
         actions: [
-          { label: 'View release', primary: true, onClick: () => api.updates.open(info.url) },
+          { label: 'Update Now', primary: true, onClick: () => api.updates.install?.() },
           { label: 'Later' },
-          { label: 'Skip this version', onClick: () => api.updates.skip(info.version) },
         ],
       });
     });
-    api?.updates?.state?.().then((st) => { if (st?.current) this.currentVersion = st.current; }).catch(() => {});
+    api?.updates?.state?.().then((st) => { if (st?.currentVersion || st?.current) this.currentVersion = st.currentVersion || st.current; }).catch(() => {});
 
     // Memory: tell the user the moment something is saved, unless the Memory panel is already open showing it live.
     api?.memory?.onChanged?.((event = {}) => {
@@ -703,6 +748,33 @@ class NexoraApp {
     else if (name === 'modeSwitch') this.soundSystem.playModeSwitch();
     else if (name === 'error') this.soundSystem.playError();
     else if (name === 'offline') this.soundSystem.playOffline();
+  }
+
+  async openSetupWizard({ startStep = 0 } = {}) {
+    if (this.setupWizard?.isOpen) return;
+    const container = document.getElementById('setupWizardContainer');
+    if (!container) return;
+    // Pause active wake/live temporarily so Step 3/4 mic & wake tests run cleanly without stream contention
+    try { await this.stopLiveTalk?.(); } catch {}
+    try { await this.stopWakeListening?.(); } catch {}
+
+    this.setupWizard = new SetupWizard({
+      container,
+      app: this,
+      onComplete: () => {
+        void this.settingsPanel?.loadConfig?.();
+        this.settingsPanel?.container?.querySelector?.('#btnGeminiKeyStatus')?.click?.();
+      },
+      onDismiss: async () => {
+        void this.settingsPanel?.loadConfig?.();
+        try {
+          if ((await window.nexoraAPI?.config?.get?.('voice.wakeWordEnabled')) === true) {
+            void this.startWakeListening?.({ restore: true });
+          }
+        } catch {}
+      },
+    });
+    await this.setupWizard.open({ startStep });
   }
 
 }

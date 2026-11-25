@@ -26,15 +26,24 @@ class SidecarManager extends EventEmitter {
   }
 
   resolveBinaryPath() {
-    // 1. Check native/rust build outputs
-    const candidates = [
+    const exeName = process.platform === 'win32' ? 'nexora-core.exe' : 'nexora-core';
+    const candidates = [];
+    if (process.resourcesPath) {
+      candidates.push(
+        path.join(process.resourcesPath, 'native', exeName),
+        path.join(process.resourcesPath, exeName),
+        path.join(process.resourcesPath, 'app.asar.unpacked', 'native', 'rust', 'target', 'release', exeName),
+      );
+    }
+    // Check native/rust build outputs in development
+    candidates.push(
       path.join(__dirname, '../../../native/rust/target/release/nexora-core.exe'),
       path.join(__dirname, '../../../native/rust/target/debug/nexora-core.exe'),
       path.join(__dirname, '../../../native/rust/target/release/nexora-core'),
       path.join(__dirname, '../../../native/rust/target/debug/nexora-core'),
       path.join(__dirname, '../../../target/release/nexora.exe'),
       path.join(__dirname, '../../../target/debug/nexora.exe'),
-    ];
+    );
 
     for (const p of candidates) {
       if (fs.existsSync(p)) return p;
@@ -149,16 +158,18 @@ class SidecarManager extends EventEmitter {
   }
 
   startHeartbeat() {
-    setInterval(async () => {
+    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = setInterval(async () => {
       if (this.status === 'online') {
         try {
-          const res = await this.sendRequest('ping');
+          await this.sendRequest('ping');
           this.metrics.lastHeartbeat = Date.now();
         } catch {
           // heartbeat missed
         }
       }
     }, 4000);
+    this.heartbeatTimer.unref?.();
   }
 
   getStatus() {
@@ -172,6 +183,10 @@ class SidecarManager extends EventEmitter {
   }
 
   stop() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
     if (this.process) {
       try {
         this.process.kill();

@@ -6,10 +6,104 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "test": "node tests/unit/run-tests.js && node tests/unit/live-tools-test.js && node tests/unit/tts-test.js && node tests/unit/categories-test.js && node tests/unit/alert-test.js && node tests/unit/autonomy-test.js && node tests/unit/voice-task-test.js && node tests/unit/apps-voice-screen-test.js && node tests/unit/wake-live-test.js && node tests/unit/download-voice-test.js && node tests/unit/model-health-test.js && node tests/unit/robot-test.js && node tests/unit/autonomy-v014-test.js && node tests/unit/wake-v015-test.js && node tests/unit/window-glass-test.js && node tests/unit/wake-onnx-test.js && node tests/unit/telemetry-test.js && node tests/unit/update-test.js",
+    "test": "node tests/unit/run-tests.js && node tests/unit/live-tools-test.js && node tests/unit/tts-test.js && node tests/unit/categories-test.js && node tests/unit/alert-test.js && node tests/unit/autonomy-test.js && node tests/unit/voice-task-test.js && node tests/unit/apps-voice-screen-test.js && node tests/unit/wake-live-test.js && node tests/unit/download-voice-test.js && node tests/unit/model-health-test.js && node tests/unit/robot-test.js && node tests/unit/autonomy-v014-test.js && node tests/unit/wake-v015-test.js && node tests/unit/window-glass-test.js && node tests/unit/wake-onnx-test.js && node tests/unit/telemetry-test.js && node tests/unit/update-test.js && node tests/unit/updater-test.js && node tests/unit/packaging-test.js && node tests/unit/audio-isolation-test.js && node tests/unit/setup-wizard-test.js",
+    "test:e2e": "node tests/e2e/smoke.js",
+    "version:sync": "node tools/sync-version.js",
     "build:rust": "cargo build --manifest-path native/rust/Cargo.toml --release",
     "build:rust:debug": "cargo build --manifest-path native/rust/Cargo.toml",
+    "pack": "npm run build:rust && electron-builder --win --x64 --dir --publish never",
+    "dist:dir": "npm run build:rust && electron-builder --win --x64 --dir --publish never",
+    "dist": "npm run build:rust && electron-builder --win nsis --x64 --publish never",
+    "dist:publish": "npm run build:rust && electron-builder --win nsis --x64 --publish always",
     "hero": "node tools/record-hero.js"
+  },
+  "build": {
+    "appId": "com.codewithsempai.nexora",
+    "productName": "NEXORA",
+    "copyright": "Copyright © 2026 codewithsempai_daya",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "asar": true,
+    "asarUnpack": [
+      "assets/wakeword/**/*",
+      "assets/icons/**/*",
+      "src/main/services/wakeword-worker.js",
+      "src/main/services/wakeword-onnx.js",
+      "src/main/services/onnx-lite.js"
+    ],
+    "files": [
+      "src/**/*",
+      "assets/icons/**/*",
+      "assets/wakeword/**/*",
+      "package.json",
+      "LICENSE",
+      "NOTICE",
+      "PRIVACY.md",
+      "SECURITY.md",
+      "!src/**/*.map",
+      "!assets/robot/**/*",
+      "!tests/**/*",
+      "!docs/**/*",
+      "!tools/**/*",
+      "!native/**/*",
+      "!3d model nexie/**/*",
+      "!orb-studio-reference/**/*",
+      "!platforms/**/*",
+      "!real_bac/**/*",
+      "!n/**/*",
+      "!target/**/*",
+      "!dist/**/*",
+      "!release/**/*",
+      "!*.zip",
+      "!*.bat",
+      "!Cargo.toml",
+      "!Cargo.lock"
+    ],
+    "extraResources": [
+      {
+        "from": "native/rust/target/release/nexora-core.exe",
+        "to": "native/nexora-core.exe"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "executableName": "NEXORA",
+      "icon": "assets/icons/nexora-app-icon.ico",
+      "signAndEditExecutable": true
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "NEXORA",
+      "uninstallDisplayName": "NEXORA",
+      "installerIcon": "assets/icons/nexora-app-icon.ico",
+      "uninstallerIcon": "assets/icons/nexora-app-icon.ico",
+      "installerHeaderIcon": "assets/icons/nexora-app-icon.ico",
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "NEXORA-Setup-x64.exe",
+      "include": "build/installer.nsh"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "codewithsempai-daya",
+        "repo": "nexora",
+        "releaseType": "release"
+      }
+    ]
   },
   "keywords": [
     "nexora",
@@ -22,9 +116,11 @@
   "license": "AGPL-3.0-or-later",
   "devDependencies": {
     "electron": "^33.2.1",
+    "electron-builder": "^26.18.0",
     "playwright": "^1.50.0"
   },
   "dependencies": {
+    "electron-updater": "^6.8.11",
     "ws": "^8.23.0"
   }
 }

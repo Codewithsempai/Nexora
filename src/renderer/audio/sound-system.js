@@ -1,15 +1,33 @@
 /* ==========================================================================
    NEXORA — Procedural Sound Effect System
-   Synthesizes custom acoustic soundscapes via Web Audio API.
-   Subtle, futuristic, crystalline, and non-intrusive.
+   Synthesizes custom acoustic soundscapes via an isolated Web Audio playback bus.
+   Provides per-effect volume, conservative defaults, gain smoothing, overlap
+   prevention, and peak limiting so SFX never clip or affect other apps.
    ========================================================================== */
+
+import { getSharedPlaybackBus, clamp01 } from './playback-bus.js';
+
+export const SFX_CATEGORIES = ['startup', 'wake', 'listening', 'thinking', 'response', 'panel', 'mode', 'error'];
+
+const DEFAULT_SFX_VOLUMES = {
+  startup: 0.65,
+  wake: 0.75,
+  listening: 0.70,
+  thinking: 0.55,
+  response: 0.70,
+  panel: 0.55,
+  mode: 0.60,
+  error: 0.70,
+};
 
 export class SoundSystem {
   constructor(config = {}) {
+    this.playbackBus = config.playbackBus || getSharedPlaybackBus();
     this.audioCtx = null;
     this.enabled = config.enabled ?? true;
-    this.masterVolume = config.masterVolume ?? 0.75;
-    this.perEffect = config.perEffect || {
+    this.masterVolume = clamp01(config.masterVolume ?? 0.55, 0.55);
+    if (config.outputProfile) this.playbackBus.setOutputProfile(config.outputProfile);
+    this.perEffect = {
       startup: true,
       wake: true,
       listening: true,
@@ -18,36 +36,52 @@ export class SoundSystem {
       panel: true,
       mode: true,
       error: true,
+      ...(config.perEffect || {}),
     };
+    this.sfxVolumes = { ...DEFAULT_SFX_VOLUMES, ...(config.sfxVolumes || {}) };
 
     this.masterGainNode = null;
     this.lastPlayTimes = new Map();
-    this.minIntervalMs = 60; // Debounce overlapping effects
+    this.activeVoices = new Set();
+    this.maxConcurrentEffects = 3;
+    this.minIntervalMs = 140;
   }
 
   ensureContext() {
-    if (!this.audioCtx) {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContextClass) {
-        console.warn('[NEXORA Audio] Web Audio API unavailable');
-        return false;
+    const ctx = this.playbackBus.ensureContext();
+    if (!ctx) return false;
+    if (this.audioCtx !== ctx || !this.masterGainNode) {
+      this.audioCtx = ctx;
+      this.masterGainNode = ctx.createGain();
+      const now = ctx.currentTime || 0;
+      if (typeof this.masterGainNode.gain.setValueAtTime === 'function') {
+        this.masterGainNode.gain.setValueAtTime(this.masterVolume, now);
+      } else {
+        this.masterGainNode.gain.value = this.masterVolume;
       }
-      this.audioCtx = new AudioContextClass();
-      this.masterGainNode = this.audioCtx.createGain();
-      this.masterGainNode.gain.setValueAtTime(this.masterVolume, this.audioCtx.currentTime);
-      this.masterGainNode.connect(this.audioCtx.destination);
-    }
-
-    if (this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume().catch(() => {});
+      const dest = this.playbackBus.getDestinationNode() || ctx.destination;
+      this.masterGainNode.connect(dest);
     }
     return true;
   }
 
+  resumeIfReady() {
+    this.playbackBus.resumeIfInitialized();
+  }
+
+  setOutputProfile(profile) {
+    return this.playbackBus.setOutputProfile(profile);
+  }
+
   setMasterVolume(val) {
-    this.masterVolume = Math.max(0, Math.min(1, val));
+    this.masterVolume = clamp01(val, this.masterVolume);
     if (this.masterGainNode && this.audioCtx) {
-      this.masterGainNode.gain.setTargetAtTime(this.masterVolume, this.audioCtx.currentTime, 0.05);
+      const now = this.audioCtx.currentTime || 0;
+      if (typeof this.masterGainNode.gain.setTargetAtTime === 'function') {
+        this.masterGainNode.gain.setTargetAtTime(this.masterVolume, now, 0.03);
+      } else {
+        this.masterGainNode.gain.value = this.masterVolume;
+      }
     }
   }
 
@@ -59,312 +93,314 @@ export class SoundSystem {
     this.perEffect[effectName] = !!val;
   }
 
+  setEffectVolume(category, val) {
+    if (!SFX_CATEGORIES.includes(category)) return false;
+    this.sfxVolumes[category] = clamp01(val, DEFAULT_SFX_VOLUMES[category] ?? 0.65);
+    return true;
+  }
+
+  getEffectVolume(category) {
+    return clamp01(this.sfxVolumes[category], DEFAULT_SFX_VOLUMES[category] ?? 0.65);
+  }
+
+  applyConfig(audioCfg = {}) {
+    if (!audioCfg || typeof audioCfg !== 'object') return;
+    if (typeof audioCfg.enabled === 'boolean') this.setEnabled(audioCfg.enabled);
+    if (audioCfg.masterVolume != null) this.setMasterVolume(audioCfg.masterVolume);
+    if (audioCfg.outputProfile) this.setOutputProfile(audioCfg.outputProfile);
+    if (audioCfg.soundEffects && typeof audioCfg.soundEffects === 'object') {
+      for (const [key, val] of Object.entries(audioCfg.soundEffects)) {
+        this.setEffectEnabled(key, val);
+      }
+    }
+    if (audioCfg.sfxVolumes && typeof audioCfg.sfxVolumes === 'object') {
+      for (const [key, val] of Object.entries(audioCfg.sfxVolumes)) {
+        this.setEffectVolume(key, val);
+      }
+    }
+  }
+
   canPlay(effectName, flag = effectName) {
     if (!this.enabled) return false;
     if (this.perEffect[flag] === false) return false;
+    if (this.getEffectVolume(flag) <= 0.001 || this.masterVolume <= 0.001) return false;
 
-    const now = performance.now();
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const last = this.lastPlayTimes.get(effectName) || 0;
-    if (now - last < this.minIntervalMs) return false;
+    const minWait = ['listening', 'thinking', 'speaking', 'idle', 'panelOpen', 'panelClose'].includes(effectName)
+      ? 200
+      : this.minIntervalMs;
+    if (now - last < minWait) return false;
 
     this.lastPlayTimes.set(effectName, now);
     return this.ensureContext();
   }
 
+  /** Tracks active synth voices and smoothly trims excess concurrent tones to prevent clipping/overlap spikes. */
+  scheduleTone({ type = 'sine', category = 'mode', freqStart, freqEnd = null, startAt, duration, peakGain = 0.14, attack = 0.02, linearFreq = false }) {
+    const ctx = this.audioCtx;
+    if (!ctx || !this.masterGainNode) return;
+    while (this.activeVoices.size >= this.maxConcurrentEffects * 3) {
+      const oldest = this.activeVoices.values().next().value;
+      if (!oldest) break;
+      this.activeVoices.delete(oldest);
+      try { oldest.gain.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.01); } catch {}
+      try { oldest.osc.stop(ctx.currentTime + 0.025); } catch {}
+    }
+
+    const scale = this.getEffectVolume(category);
+    const safePeak = Math.max(0.0002, Math.min(0.24, peakGain * scale));
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freqStart, startAt);
+    if (freqEnd && freqEnd !== freqStart) {
+      if (linearFreq) osc.frequency.linearRampToValueAtTime(freqEnd, startAt + Math.max(0.02, duration * 0.85));
+      else osc.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd), startAt + Math.max(0.02, duration * 0.85));
+    }
+
+    gain.gain.setValueAtTime(0.0001, startAt);
+    gain.gain.linearRampToValueAtTime(safePeak, startAt + attack);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+
+    osc.connect(gain);
+    gain.connect(this.masterGainNode);
+
+    const entry = { osc, gain };
+    this.activeVoices.add(entry);
+    osc.onended = () => {
+      this.activeVoices.delete(entry);
+      try { osc.disconnect(); } catch {}
+      try { gain.disconnect(); } catch {}
+    };
+    osc.start(startAt);
+    osc.stop(startAt + duration + 0.02);
+  }
+
   // --- 1. Application Startup (Crystalline Major 7th harmonic flourish) ---
   playStartup() {
     if (!this.canPlay('startup')) return;
-    const ctx = this.audioCtx;
-    const t = ctx.currentTime + 0.02;
-
-    const freqs = [440, 554.37, 659.25, 830.61]; // A4, C#5, E5, G#5
-    freqs.forEach((f, idx) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f, t + idx * 0.05);
-
-      gain.gain.setValueAtTime(0, t + idx * 0.05);
-      gain.gain.linearRampToValueAtTime(0.18, t + idx * 0.05 + 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.05 + 0.65);
-
-      osc.connect(gain);
-      gain.connect(this.masterGainNode);
-
-      osc.start(t + idx * 0.05);
-      osc.stop(t + idx * 0.05 + 0.7);
+    const t = this.audioCtx.currentTime + 0.02;
+    [440, 554.37, 659.25, 830.61].forEach((f, idx) => {
+      this.scheduleTone({
+        type: 'sine',
+        category: 'startup',
+        freqStart: f,
+        startAt: t + idx * 0.05,
+        duration: 0.65,
+        attack: 0.04,
+        peakGain: 0.14,
+      });
     });
   }
 
   // --- 2. Wake Activation (Ascending harmonic energy elevation) ---
   playWake() {
     if (!this.canPlay('wake')) return;
-    const ctx = this.audioCtx;
-    const t = ctx.currentTime;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(320, t);
-    osc.frequency.exponentialRampToValueAtTime(880, t + 0.24);
-
-    gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.22, t + 0.06);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
-
-    osc.connect(gain);
-    gain.connect(this.masterGainNode);
-
-    osc.start(t);
-    osc.stop(t + 0.35);
+    const t = this.audioCtx.currentTime;
+    this.scheduleTone({
+      type: 'triangle',
+      category: 'wake',
+      freqStart: 320,
+      freqEnd: 880,
+      startAt: t,
+      duration: 0.32,
+      attack: 0.05,
+      peakGain: 0.18,
+    });
   }
 
   // --- 3. Listening Chime (Discrete double acoustic tick) ---
   playListening() {
     if (!this.canPlay('listening')) return;
-    const ctx = this.audioCtx;
-    const t = ctx.currentTime;
-
+    const t = this.audioCtx.currentTime;
     [784, 1046.5].forEach((f, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f, t + i * 0.07);
-
-      gain.gain.setValueAtTime(0, t + i * 0.07);
-      gain.gain.linearRampToValueAtTime(0.15, t + i * 0.07 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.18);
-
-      osc.connect(gain);
-      gain.connect(this.masterGainNode);
-
-      osc.start(t + i * 0.07);
-      osc.stop(t + i * 0.07 + 0.2);
+      this.scheduleTone({
+        type: 'sine',
+        category: 'listening',
+        freqStart: f,
+        startAt: t + i * 0.07,
+        duration: 0.18,
+        attack: 0.02,
+        peakGain: 0.13,
+      });
     });
   }
 
   // --- 4. Thinking (three quick soft staccato ticks) ---
   playThinking() {
     if (!this.canPlay('thinking')) return;
-    const ctx = this.audioCtx;
-    const t = ctx.currentTime;
+    const t = this.audioCtx.currentTime;
     [0, 0.09, 0.18].forEach((offset, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(330 + i * 55, t + offset);
-      gain.gain.setValueAtTime(0, t + offset);
-      gain.gain.linearRampToValueAtTime(0.12, t + offset + 0.008);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.07);
-      osc.connect(gain);
-      gain.connect(this.masterGainNode);
-      osc.start(t + offset);
-      osc.stop(t + offset + 0.08);
+      this.scheduleTone({
+        type: 'triangle',
+        category: 'thinking',
+        freqStart: 330 + i * 55,
+        startAt: t + offset,
+        duration: 0.07,
+        attack: 0.008,
+        peakGain: 0.10,
+      });
     });
   }
 
   // --- Speaking (bright rising three-note shimmer) ---
   playSpeaking() {
     if (!this.canPlay('speaking', 'response')) return;
-    const ctx = this.audioCtx;
-    const t = ctx.currentTime;
+    const t = this.audioCtx.currentTime;
     [523.25, 659.25, 987.77].forEach((f, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(f, t + i * 0.055);
-      gain.gain.setValueAtTime(0, t + i * 0.055);
-      gain.gain.linearRampToValueAtTime(0.13, t + i * 0.055 + 0.012);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.055 + 0.22);
-      osc.connect(gain);
-      gain.connect(this.masterGainNode);
-      osc.start(t + i * 0.055);
-      osc.stop(t + i * 0.055 + 0.24);
+      this.scheduleTone({
+        type: 'triangle',
+        category: 'response',
+        freqStart: f,
+        startAt: t + i * 0.055,
+        duration: 0.22,
+        attack: 0.012,
+        peakGain: 0.11,
+      });
     });
   }
 
   // --- Idle / standby (soft low two-note settle) ---
   playIdle() {
     if (!this.canPlay('idle', 'mode')) return;
-    const ctx = this.audioCtx;
-    const t = ctx.currentTime;
+    const t = this.audioCtx.currentTime;
     [392, 293.66].forEach((f, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f, t + i * 0.12);
-      gain.gain.setValueAtTime(0, t + i * 0.12);
-      gain.gain.linearRampToValueAtTime(0.1, t + i * 0.12 + 0.03);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.3);
-      osc.connect(gain);
-      gain.connect(this.masterGainNode);
-      osc.start(t + i * 0.12);
-      osc.stop(t + i * 0.12 + 0.32);
+      this.scheduleTone({
+        type: 'sine',
+        category: 'mode',
+        freqStart: f,
+        startAt: t + i * 0.12,
+        duration: 0.30,
+        attack: 0.03,
+        peakGain: 0.09,
+      });
     });
   }
 
   // --- 5. Assistant Response (Crisp futuristic glass pop) ---
   playResponse() {
     if (!this.canPlay('response')) return;
-    const ctx = this.audioCtx;
-    const t = ctx.currentTime;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(1174.66, t); // D6
-    osc.frequency.exponentialRampToValueAtTime(880, t + 0.16);
-
-    gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.16, t + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-
-    osc.connect(gain);
-    gain.connect(this.masterGainNode);
-
-    osc.start(t);
-    osc.stop(t + 0.26);
+    this.scheduleTone({
+      type: 'sine',
+      category: 'response',
+      freqStart: 1174.66,
+      freqEnd: 880,
+      startAt: this.audioCtx.currentTime,
+      duration: 0.24,
+      attack: 0.02,
+      peakGain: 0.13,
+    });
   }
 
   // --- 6. Panel Open (Smooth filtered air slide) ---
   playPanelOpen() {
-    if (!this.canPlay('panel')) return;
-    const ctx = this.audioCtx;
-    const t = ctx.currentTime;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(260, t);
-    osc.frequency.exponentialRampToValueAtTime(520, t + 0.14);
-
-    gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.1, t + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-
-    osc.connect(gain);
-    gain.connect(this.masterGainNode);
-
-    osc.start(t);
-    osc.stop(t + 0.18);
+    if (!this.canPlay('panelOpen', 'panel')) return;
+    this.scheduleTone({
+      type: 'sine',
+      category: 'panel',
+      freqStart: 260,
+      freqEnd: 520,
+      startAt: this.audioCtx.currentTime,
+      duration: 0.16,
+      attack: 0.03,
+      peakGain: 0.09,
+    });
   }
 
   // --- 7. Panel Close (Gentle downward descent) ---
   playPanelClose() {
-    if (!this.canPlay('panel')) return;
-    const ctx = this.audioCtx;
-    const t = ctx.currentTime;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(480, t);
-    osc.frequency.exponentialRampToValueAtTime(240, t + 0.12);
-
-    gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.08, t + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
-
-    osc.connect(gain);
-    gain.connect(this.masterGainNode);
-
-    osc.start(t);
-    osc.stop(t + 0.16);
+    if (!this.canPlay('panelClose', 'panel')) return;
+    this.scheduleTone({
+      type: 'sine',
+      category: 'panel',
+      freqStart: 480,
+      freqEnd: 240,
+      startAt: this.audioCtx.currentTime,
+      duration: 0.14,
+      attack: 0.02,
+      peakGain: 0.075,
+    });
   }
 
   // --- 8. Mode Switch (Subtle tactile pitch click) ---
+  playPanel() {
+    return this.playPanelOpen();
+  }
+
+  playMode() {
+    return this.playModeSwitch();
+  }
+
   playModeSwitch() {
-    if (!this.canPlay('mode')) return;
-    const ctx = this.audioCtx;
-    const t = ctx.currentTime;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(620, t);
-    osc.frequency.linearRampToValueAtTime(740, t + 0.06);
-
-    gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.12, t + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-
-    osc.connect(gain);
-    gain.connect(this.masterGainNode);
-
-    osc.start(t);
-    osc.stop(t + 0.09);
+    if (!this.canPlay('modeSwitch', 'mode')) return;
+    this.scheduleTone({
+      type: 'triangle',
+      category: 'mode',
+      freqStart: 620,
+      freqEnd: 740,
+      linearFreq: true,
+      startAt: this.audioCtx.currentTime,
+      duration: 0.08,
+      attack: 0.015,
+      peakGain: 0.10,
+    });
   }
 
   // --- 9. Error (two low buzzy descending beeps) ---
   playError() {
     if (!this.canPlay('error')) return;
-    const ctx = this.audioCtx;
-    const t = ctx.currentTime;
+    const t = this.audioCtx.currentTime;
     [0, 0.16].forEach((offset, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(i ? 190 : 260, t + offset);
-      osc.frequency.linearRampToValueAtTime(i ? 140 : 200, t + offset + 0.12);
-      gain.gain.setValueAtTime(0, t + offset);
-      gain.gain.linearRampToValueAtTime(0.13, t + offset + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.14);
-      osc.connect(gain);
-      gain.connect(this.masterGainNode);
-      osc.start(t + offset);
-      osc.stop(t + offset + 0.15);
+      this.scheduleTone({
+        type: 'sawtooth',
+        category: 'error',
+        freqStart: i ? 190 : 260,
+        freqEnd: i ? 140 : 200,
+        linearFreq: true,
+        startAt: t + offset,
+        duration: 0.14,
+        attack: 0.015,
+        peakGain: 0.11,
+      });
     });
   }
 
   // --- 10. Offline (Slow graceful frequency descent) ---
   playOffline() {
-    if (!this.canPlay('mode')) return;
-    const ctx = this.audioCtx;
-    const t = ctx.currentTime;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(520, t);
-    osc.frequency.exponentialRampToValueAtTime(160, t + 0.35);
-
-    gain.gain.setValueAtTime(0.14, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-
-    osc.connect(gain);
-    gain.connect(this.masterGainNode);
-
-    osc.start(t);
-    osc.stop(t + 0.42);
+    if (!this.canPlay('offline', 'mode')) return;
+    this.scheduleTone({
+      type: 'sine',
+      category: 'mode',
+      freqStart: 520,
+      freqEnd: 160,
+      startAt: this.audioCtx.currentTime,
+      duration: 0.38,
+      attack: 0.02,
+      peakGain: 0.11,
+    });
   }
+
   playOrbIdentity(identity) {
-    if (!this.enabled || !this.ensureContext()) return;
-    const ctx = this.audioCtx, t = ctx.currentTime;
+    if (!this.canPlay(`orb:${identity}`, 'mode')) return;
+    const t = this.audioCtx.currentTime;
     const sequences = {
       nexora: [660, 990, 1320],
       nexo: [440, 880, 1175, 1760],
       nexie: [523, 784, 1046, 1568],
-      robot: [392, 784, 1175, 1568, 2093]
+      robot: [392, 784, 1175, 1568, 2093],
     };
     const notes = sequences[identity] || sequences.nexora;
     notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator(), gain = ctx.createGain();
-      osc.type = identity === 'nexo' ? 'triangle' : 'sine';
-      osc.frequency.setValueAtTime(freq, t + i * 0.055);
-      gain.gain.setValueAtTime(0.0001, t + i * 0.055);
-      gain.gain.linearRampToValueAtTime(0.09, t + i * 0.055 + 0.012);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.055 + 0.13);
-      osc.connect(gain); gain.connect(this.masterGainNode);
-      osc.start(t + i * 0.055); osc.stop(t + i * 0.055 + 0.14);
+      this.scheduleTone({
+        type: identity === 'nexo' ? 'triangle' : 'sine',
+        category: 'mode',
+        freqStart: freq,
+        startAt: t + i * 0.055,
+        duration: 0.13,
+        attack: 0.012,
+        peakGain: 0.08,
+      });
     });
   }
-
 }

@@ -19,6 +19,8 @@ const { ReminderAlertManager } = require('./reminder-alert');
 
 // v0.3.12: voice must never be slowed by Chromium when the window is hidden, minimised or behind another app (tray / wake popup use).
 for (const flag of ['disable-renderer-backgrounding', 'disable-background-timer-throttling', 'disable-backgrounding-occluded-windows']) app.commandLine.appendSwitch(flag);
+// Audio isolation: prevent Chromium media-session focus requests, WebRTC mic auto-gain hijacking Windows endpoints, and loopback echo processing.
+app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,MediaSessionService,WebRtcAllowInputVolumeAdjustment,ChromeWideEchoCancellation');
 
 // Windows needs an app id for toast notifications (reminders) to show when started with `electron .`
 if (process.platform === 'win32') app.setAppUserModelId('NEXORA');
@@ -33,7 +35,10 @@ if (!gotTheLock) {
 
 // v0.3.6: pin the data folder so memory / reminders / settings are ALWAYS read from the same place
 // (it used to depend on how the app was launched, so a different launch looked like "memory forgot everything").
-try { app.setPath('userData', path.join(app.getPath('appData'), 'nexora')); } catch { /* keep Electron default */ }
+try {
+  const customUserData = process.env.NEXORA_USER_DATA && process.env.NEXORA_USER_DATA.trim();
+  app.setPath('userData', customUserData ? path.resolve(customUserData) : path.join(app.getPath('appData'), 'nexora'));
+} catch { /* keep Electron default */ }
 
 // Global service singletons
 const configService = getConfigService();
@@ -152,7 +157,8 @@ app.on('will-quit', () => {
   safe(() => popupManager.destroy());
   console.log('[NEXORA Main] NEXORA shutdown complete.');
   // v0.3.33: guarantee the process really ends (no orphan Electron process holding the single-instance lock).
-  const hardExit = setTimeout(() => { try { app.exit(0); } catch { process.exit(0); } }, 1200);
+  const hardExitDelay = global.__nexoraUpdating ? 4500 : 1200;
+  const hardExit = setTimeout(() => { try { app.exit(0); } catch { process.exit(0); } }, hardExitDelay);
   hardExit.unref?.();
 });
 

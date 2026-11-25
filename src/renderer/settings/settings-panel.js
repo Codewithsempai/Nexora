@@ -79,10 +79,89 @@ export class SettingsPanel {
 
             <div class="setting-row">
               <div class="setting-info">
-                <span class="setting-name">Master Volume</span>
-                <span class="setting-desc">Global acoustic gain</span>
+                <span class="setting-name">Safe Audio Output Level</span>
+                <span class="setting-desc">Conservative ceiling with gain smoothing &amp; peak limiting</span>
               </div>
-              <input type="range" class="setting-range" id="settingMasterVolume" min="0" max="1" step="0.05" value="0.75" />
+              <select class="setting-select" id="settingAudioOutputProfile" aria-label="Safe audio output level">
+                <option value="low">Low (Gentle)</option>
+                <option value="medium">Medium (Balanced Default)</option>
+                <option value="high">High (Full)</option>
+              </select>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">Master Volume</span>
+                <span class="setting-desc">Independent NEXORA sound-effect gain (does not alter OS volume)</span>
+              </div>
+              <input type="range" class="setting-range" id="settingMasterVolume" min="0" max="1" step="0.05" value="0.55" />
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">Gemini Voice Output Volume</span>
+                <span class="setting-desc">Independent spoken assistant playback level</span>
+              </div>
+              <input type="range" class="setting-range" id="settingVoiceOutputVolume" min="0" max="1" step="0.05" value="0.75" />
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">Microphone Input Device</span>
+                <span class="setting-desc">Separate capture graph isolated from speaker playback</span>
+              </div>
+              <select class="setting-select" id="settingMicDevice" aria-label="Microphone input device">
+                <option value="default">System Default Microphone</option>
+              </select>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">Noise Suppression</span>
+                <span class="setting-desc">Clean voice clarity without changing Windows app volumes</span>
+              </div>
+              <label class="setting-toggle">
+                <input type="checkbox" id="settingNoiseSuppression" checked />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">Echo Cancellation (WebRTC)</span>
+                <span class="setting-desc">Off by default on Bluetooth/desktop headsets to prevent Windows ducking</span>
+              </div>
+              <label class="setting-toggle">
+                <input type="checkbox" id="settingEchoCancellation" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">Auto Gain Control (WebRTC AGC)</span>
+                <span class="setting-desc">Keep off so Windows microphone/endpoint levels stay stable</span>
+              </div>
+              <label class="setting-toggle">
+                <input type="checkbox" id="settingAutoGainControl" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">Windows Audio Session Isolation</span>
+                <span class="setting-desc" id="windowsDuckingStatus">Checking Windows Communications ducking state...</span>
+              </div>
+              <button class="sound-chip-btn" id="btnOpenWinAudioSettings" type="button">Sound Settings</button>
+            </div>
+
+            <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:8px;">
+              <div class="setting-info">
+                <span class="setting-name">Per-Effect Volume Mix</span>
+                <span class="setting-desc">Independent level &amp; mute control for each NEXORA sound effect</span>
+              </div>
+              <div class="audio-sfx-grid" id="audioSfxMixGrid"></div>
             </div>
 
             <div class="setting-row sound-test-row">
@@ -96,6 +175,8 @@ export class SettingsPanel {
                 <button class="sound-chip-btn" data-sound="listening">Listen</button>
                 <button class="sound-chip-btn" data-sound="thinking">Think</button>
                 <button class="sound-chip-btn" data-sound="response">Reply</button>
+                <button class="sound-chip-btn" data-sound="panel">Panel</button>
+                <button class="sound-chip-btn" data-sound="mode">Mode</button>
                 <button class="sound-chip-btn" data-sound="error">Alert</button>
               </div>
             </div>
@@ -116,6 +197,13 @@ export class SettingsPanel {
                 <input type="checkbox" id="settingCloseToTray" checked />
                 <span class="toggle-slider"></span>
               </label>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">Guided Setup Wizard</span>
+                <span class="setting-desc">Re-open first-run setup for API key, mic, wake word, orb, and permissions.</span>
+              </div>
+              <button class="sound-chip-btn" id="btnRunSetupWizard" type="button">Run Setup Wizard</button>
             </div>
           </div>
 
@@ -240,8 +328,8 @@ export class SettingsPanel {
               <div class="meta-line"><span>Product</span><strong>NEXORA Desktop AI</strong></div>
               <div class="meta-line"><span>Owner_name</span><strong>Dayanithi</strong></div>
               <div class="meta-line"><span>Code_name</span><strong>Codewithsempai</strong></div>
-              <div class="meta-line"><span>Release</span><strong>Phase 3: Live Voice & Wake Word</strong></div>
-              <div class="meta-line"><span>Version</span><strong>v0.3.25 (Offline ONNX Wake Word + Orb Studio fixes)</strong></div>
+              <div class="meta-line"><span>Release</span><strong>Phase 3: Live Voice &amp; Wake Word</strong></div>
+              <div class="meta-line"><span>Version</span><strong id="aboutAppVersion">v0.3.25</strong></div>
               <div class="meta-line"><span>Target OS</span><strong>Windows 11 (win32-x64)</strong></div>
             </div>
           </div>
@@ -251,23 +339,32 @@ export class SettingsPanel {
             <h3 class="settings-group-title">Support & Updates</h3>
             <div class="setting-row">
               <div class="setting-info">
-                <span class="setting-name">Check for updates</span>
-                <span class="setting-desc">Installed builds check GitHub Releases for a newer version and show a notice. Nothing is downloaded or installed for you, and no personal data is sent. Details are in PRIVACY.md.</span>
+                <span class="setting-name">Automatic Updates</span>
+                <span class="setting-desc">Installed builds check GitHub Releases automatically, download updates in the background with progress, and restart only when you confirm Update Now. User settings, memory, and encrypted keys are preserved.</span>
               </div>
               <label class="setting-toggle">
                 <input type="checkbox" id="settingCheckUpdates" checked />
                 <span class="toggle-slider"></span>
               </label>
             </div>
-            <div class="setting-row">
-              <div class="setting-info">
-                <span class="setting-name">Version</span>
-                <span class="setting-desc" id="updateStatus" role="status">Not checked yet.</span>
+            <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:8px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div class="setting-info">
+                  <span class="setting-name">Current Version: <strong id="updateCurrentVersion">v0.3.25</strong></span>
+                  <span class="setting-desc" id="updateStatus" role="status">Not checked yet.</span>
+                </div>
+                <div class="sound-test-buttons">
+                  <button class="sound-chip-btn" id="btnCheckUpdates" type="button">Check for Updates</button>
+                  <button class="sound-chip-btn" id="btnDownloadUpdate" type="button" hidden>Download</button>
+                  <button class="sound-chip-btn" id="btnUpdateNow" type="button" hidden>Update Now</button>
+                  <button class="sound-chip-btn" id="btnOpenRelease" type="button" hidden>View release</button>
+                </div>
               </div>
-              <div class="sound-test-buttons">
-                <button class="sound-chip-btn" id="btnCheckUpdates" type="button">Check now</button>
-                <button class="sound-chip-btn" id="btnOpenRelease" type="button" hidden>View release</button>
+              <div class="update-progress-wrap" id="updateProgressWrap" hidden>
+                <div class="update-progress-bar"><div class="update-progress-fill" id="updateProgressBar"></div></div>
+                <span class="setting-desc" id="updateProgressText">Downloading update...</span>
               </div>
+              <div class="update-notes-box" id="updateNotesBox" hidden></div>
             </div>
           </div>
         </div>
@@ -360,6 +457,23 @@ export class SettingsPanel {
     const audioToggle = this.container.querySelector('#settingAudioEnabled');
     if (audioToggle && c.audio?.enabled != null) audioToggle.checked = c.audio.enabled;
 
+    const outProf = this.container.querySelector('#settingAudioOutputProfile');
+    if (outProf) outProf.value = ['low', 'medium', 'high'].includes(c.audio?.outputProfile) ? c.audio.outputProfile : 'medium';
+
+    const voiceVolRange = this.container.querySelector('#settingVoiceOutputVolume');
+    if (voiceVolRange) voiceVolRange.value = String(c.audio?.voiceOutputVolume ?? 0.75);
+
+    const nsToggle = this.container.querySelector('#settingNoiseSuppression');
+    if (nsToggle) nsToggle.checked = c.audio?.noiseSuppression !== false;
+    const ecToggle = this.container.querySelector('#settingEchoCancellation');
+    if (ecToggle) ecToggle.checked = c.audio?.echoCancellation === true;
+    const agcToggle = this.container.querySelector('#settingAutoGainControl');
+    if (agcToggle) agcToggle.checked = c.audio?.autoGainControl === true;
+
+    this.populateMicDevices(c.audio?.micDeviceId || 'default');
+    this.syncSfxMixUI(c.audio?.sfxVolumes || {}, c.audio?.soundEffects || {});
+    void this.refreshAudioDiagnostics();
+
     const oneShot = this.container.querySelector('#settingWakeOneShot'); if (oneShot) oneShot.checked = c.voice?.wakeOneShot === true;
     const wakeRange = this.container.querySelector('#settingWakeThreshold');
     if (wakeRange) { const v = Number(c.voice?.wakeThreshold); if (Number.isFinite(v) && v > 0) wakeRange.value = String(v); const out = this.container.querySelector('#wakeThresholdValue'); if (out) out.textContent = Number(wakeRange.value).toFixed(2); }
@@ -376,7 +490,13 @@ export class SettingsPanel {
     if (liveModel && c.ai?.liveModel) liveModel.dataset.selected = c.ai.liveModel;
 
     const updToggle = this.container.querySelector('#settingCheckUpdates');
-    if (updToggle) updToggle.checked = c.updates?.checkOnStart !== false;
+    if (updToggle) updToggle.checked = c.updates?.checkOnStart !== false && c.updates?.autoDownload !== false;
+
+    const verLabel = c.version ? `v${c.version}` : 'v0.3.25';
+    const aboutVer = this.container.querySelector('#aboutAppVersion');
+    if (aboutVer) aboutVer.textContent = verLabel;
+    const updVer = this.container.querySelector('#updateCurrentVersion');
+    if (updVer) updVer.textContent = verLabel;
 
     const hotkeyEl = this.container.querySelector('#settingHotkeyDisplay');
     if (hotkeyEl && c.application?.globalHotkey) {
@@ -514,6 +634,51 @@ export class SettingsPanel {
       this.options.soundSystem?.setMasterVolume(val);
     });
 
+    // Safe output profile (Low / Medium / High)
+    this.container.querySelector('#settingAudioOutputProfile')?.addEventListener('change', (e) => {
+      const val = ['low', 'medium', 'high'].includes(e.target.value) ? e.target.value : 'medium';
+      this.saveSetting('audio.outputProfile', val);
+      this.options.soundSystem?.setOutputProfile?.(val);
+      this.options.voiceAudio?.setOutputProfile?.(val);
+    });
+
+    // Independent Gemini voice output volume
+    this.container.querySelector('#settingVoiceOutputVolume')?.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      this.saveSetting('audio.voiceOutputVolume', val);
+      this.options.voiceAudio?.setVoiceOutputVolume?.(val);
+    });
+
+    // Microphone device + processing flags
+    this.container.querySelector('#settingMicDevice')?.addEventListener('change', (e) => {
+      const deviceId = e.target.value || 'default';
+      this.saveSetting('audio.micDeviceId', deviceId);
+      this.options.voiceAudio?.setCaptureOptions?.({ deviceId });
+    });
+    this.container.querySelector('#settingNoiseSuppression')?.addEventListener('change', (e) => {
+      const val = !!e.target.checked;
+      this.saveSetting('audio.noiseSuppression', val);
+      this.options.voiceAudio?.setCaptureOptions?.({ noiseSuppression: val });
+    });
+    this.container.querySelector('#settingEchoCancellation')?.addEventListener('change', (e) => {
+      const val = !!e.target.checked;
+      this.saveSetting('audio.echoCancellation', val);
+      this.options.voiceAudio?.setCaptureOptions?.({ echoCancellation: val });
+    });
+    this.container.querySelector('#settingAutoGainControl')?.addEventListener('change', (e) => {
+      const val = !!e.target.checked;
+      this.saveSetting('audio.autoGainControl', val);
+      this.options.voiceAudio?.setCaptureOptions?.({ autoGainControl: val });
+    });
+    this.container.querySelector('#btnOpenWinAudioSettings')?.addEventListener('click', () => {
+      void window.nexoraAPI?.audio?.openCommunicationsSettings?.();
+    });
+    this.container.querySelector('#btnRunSetupWizard')?.addEventListener('click', () => {
+      this.options.onOpenSetupWizard?.();
+    });
+
+    this.buildSfxMixGrid();
+
     // Close to tray
     this.container.querySelector('#settingCloseToTray')?.addEventListener('change', (e) => {
       const val = e.target.checked;
@@ -521,7 +686,7 @@ export class SettingsPanel {
     });
 
     // Sound chips test buttons
-    this.container.querySelectorAll('.sound-chip-btn').forEach((btn) => {
+    this.container.querySelectorAll('.sound-chip-btn[data-sound]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const soundType = btn.dataset.sound;
         if (soundType === 'startup') this.options.soundSystem?.playStartup();
@@ -529,6 +694,8 @@ export class SettingsPanel {
         else if (soundType === 'listening') this.options.soundSystem?.playListening();
         else if (soundType === 'thinking') this.options.soundSystem?.playThinking();
         else if (soundType === 'response') this.options.soundSystem?.playResponse();
+        else if (soundType === 'panel') this.options.soundSystem?.playPanel?.();
+        else if (soundType === 'mode') this.options.soundSystem?.playMode?.();
         else if (soundType === 'error') this.options.soundSystem?.playError();
       });
     });
@@ -668,35 +835,224 @@ LIVE: ${liveNames.join(' → ')}`;
     if (announce) this.flashSavedBadge();
   }
 
-  /** Support & Updates: on/off switch, manual "Check now", link to the release page. */
+  buildSfxMixGrid() {
+    const grid = this.container.querySelector('#audioSfxMixGrid');
+    if (!grid) return;
+    const defs = [
+      ['startup', 'Startup'],
+      ['wake', 'Wake'],
+      ['listening', 'Listening'],
+      ['thinking', 'Thinking'],
+      ['response', 'Response'],
+      ['panel', 'Panel'],
+      ['mode', 'Mode'],
+      ['error', 'Error'],
+    ];
+    grid.replaceChildren();
+    for (const [id, label] of defs) {
+      const item = document.createElement('div');
+      item.className = 'audio-sfx-item';
+      const head = document.createElement('div');
+      head.className = 'audio-sfx-head';
+      const toggle = document.createElement('input');
+      toggle.type = 'checkbox';
+      toggle.checked = true;
+      toggle.dataset.sfxEnabled = id;
+      toggle.ariaLabel = `Enable ${label} sound`;
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = label;
+      const left = document.createElement('label');
+      left.style.display = 'flex';
+      left.style.alignItems = 'center';
+      left.style.gap = '6px';
+      left.append(toggle, nameSpan);
+      const valSpan = document.createElement('span');
+      valSpan.dataset.sfxLabel = id;
+      valSpan.textContent = '100%';
+      head.append(left, valSpan);
+
+      const range = document.createElement('input');
+      range.type = 'range';
+      range.className = 'setting-range';
+      range.min = '0';
+      range.max = '1';
+      range.step = '0.05';
+      range.value = '1';
+      range.dataset.sfxVolume = id;
+      range.ariaLabel = `${label} volume`;
+
+      toggle.addEventListener('change', () => {
+        const checked = !!toggle.checked;
+        this.saveSetting(`audio.soundEffects.${id}`, checked);
+        this.options.soundSystem?.setEffectEnabled?.(id, checked);
+      });
+      range.addEventListener('input', () => {
+        const vol = parseFloat(range.value);
+        valSpan.textContent = `${Math.round(vol * 100)}%`;
+        this.saveSetting(`audio.sfxVolumes.${id}`, vol);
+        this.options.soundSystem?.setEffectVolume?.(id, vol);
+      });
+
+      item.append(head, range);
+      grid.appendChild(item);
+    }
+  }
+
+  syncSfxMixUI(sfxVolumes = {}, soundEffects = {}) {
+    for (const id of ['startup', 'wake', 'listening', 'thinking', 'response', 'panel', 'mode', 'error']) {
+      const cb = this.container.querySelector(`[data-sfx-enabled="${id}"]`);
+      const rg = this.container.querySelector(`[data-sfx-volume="${id}"]`);
+      const lbl = this.container.querySelector(`[data-sfx-label="${id}"]`);
+      if (cb && typeof soundEffects?.[id] === 'boolean') cb.checked = soundEffects[id];
+      const vol = sfxVolumes?.[id];
+      if (rg && vol != null) rg.value = String(vol);
+      if (lbl && vol != null) lbl.textContent = `${Math.round(Number(vol) * 100)}%`;
+    }
+  }
+
+  async populateMicDevices(selectedId = 'default') {
+    const select = this.container.querySelector('#settingMicDevice');
+    if (!select) return;
+    const devices = await this.options.voiceAudio?.listInputDevices?.().catch(() => []) || [];
+    select.replaceChildren();
+    const def = document.createElement('option');
+    def.value = 'default';
+    def.textContent = 'System Default Microphone';
+    select.appendChild(def);
+    for (const d of devices) {
+      if (!d.deviceId || d.deviceId === 'default') continue;
+      const opt = document.createElement('option');
+      opt.value = d.deviceId;
+      opt.textContent = `${d.label}${d.isBluetoothHeadset ? ' (Bluetooth)' : ''}`;
+      select.appendChild(opt);
+    }
+    if ([...select.options].some((o) => o.value === selectedId)) select.value = selectedId;
+  }
+
+  async refreshAudioDiagnostics() {
+    const el = this.container.querySelector('#windowsDuckingStatus');
+    if (!el) return;
+    try {
+      const diag = await window.nexoraAPI?.audio?.diagnostics?.();
+      if (diag?.duckingLabel) {
+        el.textContent = `Windows Communications Ducking: ${diag.duckingLabel}. Audio capture runs in isolated mode without touching Windows volume.`;
+      }
+    } catch { /* ignore */ }
+  }
+
+  /** Support & Updates: on/off toggle, manual check, progress bar, release notes, and one-click Update Now. */
   initUpdateEvents() {
     const toggle = this.container.querySelector('#settingCheckUpdates');
+    const currentVerEl = this.container.querySelector('#updateCurrentVersion');
+    const aboutVerEl = this.container.querySelector('#aboutAppVersion');
     const status = this.container.querySelector('#updateStatus');
+    const progressWrap = this.container.querySelector('#updateProgressWrap');
+    const progressBar = this.container.querySelector('#updateProgressBar');
+    const progressText = this.container.querySelector('#updateProgressText');
+    const notesBox = this.container.querySelector('#updateNotesBox');
     const checkBtn = this.container.querySelector('#btnCheckUpdates');
+    const downloadBtn = this.container.querySelector('#btnDownloadUpdate');
+    const installBtn = this.container.querySelector('#btnUpdateNow');
     const openBtn = this.container.querySelector('#btnOpenRelease');
     const api = window.nexoraAPI?.updates;
-    toggle?.addEventListener('change', () => this.saveSetting('updates.checkOnStart', toggle.checked));
-    const show = (r = {}) => {
-      if (!status) return;
-      const cur = r.current ? `v${r.current}` : 'this version';
-      const text = {
-        available: `Version ${r.latest?.version} is available (you have ${cur}). Install it manually from the release page.`,
-        current: `You are up to date (${cur}).`,
-        none: `No releases published yet (${cur}).`,
-        checking: 'Checking GitHub Releases…',
-        error: `Could not check: ${r.error || 'unknown error'}`,
-      }[r.status];
-      if (text) status.textContent = text;
-      this.releaseUrl = r.status === 'available' ? r.latest?.url : null;
+
+    const renderState = (st = {}) => {
+      if (!st || typeof st !== 'object') return;
+      const curLabel = `v${st.currentVersion || st.current || '0.3.25'}`;
+      if (currentVerEl) currentVerEl.textContent = curLabel;
+      if (aboutVerEl) aboutVerEl.textContent = curLabel;
+      if (toggle) toggle.checked = st.autoCheck !== false && st.autoDownload !== false;
+
+      if (status) {
+        if (st.status === 'checking') status.textContent = 'Checking GitHub Releases for updates...';
+        else if (st.status === 'downloading') status.textContent = `Downloading NEXORA v${st.availableVersion || ''}...`;
+        else if (st.status === 'downloaded') status.textContent = `NEXORA v${st.downloadedVersion || st.availableVersion} is ready to install.`;
+        else if (st.status === 'available') {
+          status.textContent = st.packaged === false
+            ? `Version v${st.availableVersion} is available (running development build; install via GitHub release).`
+            : `Version v${st.availableVersion} is available.`;
+        } else if (st.status === 'up-to-date') status.textContent = `You are up to date (${curLabel}).`;
+        else if (st.status === 'disabled') status.textContent = `Automatic update checks are off (${curLabel}).`;
+        else if (st.status === 'error') status.textContent = st.error || 'Could not check for updates.';
+        else status.textContent = `Running ${curLabel}.${st.packaged ? '' : ' (Development build)'}`;
+      }
+
+      if (progressWrap && progressBar && progressText) {
+        const isDownloading = st.status === 'downloading';
+        progressWrap.hidden = !isDownloading;
+        if (isDownloading) {
+          const pct = Math.max(0, Math.min(100, Math.round(st.progress?.percent || 0)));
+          const mbDone = ((st.progress?.transferred || 0) / (1024 * 1024)).toFixed(1);
+          const mbTotal = ((st.progress?.total || 0) / (1024 * 1024)).toFixed(1);
+          progressBar.style.width = `${pct}%`;
+          progressText.textContent = st.progress?.total
+            ? `${pct}% (${mbDone} / ${mbTotal} MB)`
+            : `${pct}%`;
+        }
+      }
+
+      if (notesBox) {
+        const notes = String(st.releaseNotes || '').trim();
+        notesBox.hidden = !notes;
+        notesBox.textContent = notes;
+      }
+
+      this.releaseUrl = (st.updateAvailable && st.releaseUrl) ? st.releaseUrl : null;
+      if (downloadBtn) downloadBtn.hidden = !(st.status === 'available' && st.packaged !== false);
+      if (installBtn) installBtn.hidden = !(st.status === 'downloaded' && st.updateDownloaded);
       if (openBtn) openBtn.hidden = !this.releaseUrl;
+      if (checkBtn) checkBtn.disabled = st.status === 'checking' || st.status === 'downloading';
     };
-    checkBtn?.addEventListener('click', async () => {
-      if (!api) { if (status) status.textContent = 'Update bridge unavailable. Restart NEXORA.'; return; }
-      checkBtn.disabled = true; show({ status: 'checking' });
-      try { show(await api.check()); } catch (e) { show({ status: 'error', error: e?.message }); } finally { checkBtn.disabled = false; }
+
+    toggle?.addEventListener('change', async () => {
+      if (api?.setAuto) {
+        renderState(await api.setAuto(!!toggle.checked));
+      } else {
+        this.saveSetting('updates.checkOnStart', !!toggle.checked);
+        this.saveSetting('updates.autoDownload', !!toggle.checked);
+      }
+      this.flashSavedBadge();
     });
-    openBtn?.addEventListener('click', () => { if (this.releaseUrl) api?.open(this.releaseUrl); });
-    api?.state?.().then((st) => { if (st && status) { status.textContent = `Running v${st.current}.${st.packaged ? '' : ' (Development build: no automatic checks.)'}`; } }).catch(() => {});
+
+    checkBtn?.addEventListener('click', async () => {
+      if (!api?.check) { if (status) status.textContent = 'Update bridge unavailable. Restart NEXORA.'; return; }
+      renderState({ ...(await api.state?.().catch(() => ({}))), status: 'checking' });
+      try {
+        renderState(await api.check());
+      } catch (e) {
+        renderState({ status: 'error', error: e?.message || 'Check failed.' });
+      }
+    });
+
+    downloadBtn?.addEventListener('click', async () => {
+      if (!api?.download) return;
+      downloadBtn.disabled = true;
+      const res = await api.download().catch((e) => ({ success: false, error: e?.message }));
+      downloadBtn.disabled = false;
+      if (res && res.success === false && status) status.textContent = res.error || 'Download failed.';
+      if (res?.state) renderState(res.state);
+    });
+
+    installBtn?.addEventListener('click', async () => {
+      if (!api?.install) return;
+      installBtn.disabled = true;
+      installBtn.textContent = 'Restarting...';
+      const res = await api.install().catch((e) => ({ success: false, error: e?.message }));
+      if (res && res.success === false) {
+        installBtn.disabled = false;
+        installBtn.textContent = 'Update Now';
+        if (status) status.textContent = res.error || 'Install failed.';
+      }
+    });
+
+    openBtn?.addEventListener('click', () => { if (this.releaseUrl) api?.open?.(this.releaseUrl); });
+
+    api?.onState?.(renderState);
+    api?.onProgress?.(renderState);
+    api?.onDownloaded?.(renderState);
+    api?.onError?.(() => { void api.state?.().then(renderState).catch(() => {}); });
+    api?.onAvailable?.(() => { void api.state?.().then(renderState).catch(() => {}); });
+    api?.state?.().then(renderState).catch(() => {});
   }
 
   async saveSetting(keyPath, val) {

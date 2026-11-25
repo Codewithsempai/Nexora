@@ -39,13 +39,37 @@ const DEFAULT_CONFIG = {
     popupOrb: true, // show the floating Orb when a reminder is due while the main window is hidden
   },
   autonomy: JSON.parse(JSON.stringify(AUTONOMY_DEFAULTS)),
+  setup: {
+    completed: false,
+    completedAt: null,
+    version: '',
+    skippedApiKey: false,
+    permissionPreset: 'ask_every_time', // 'ask_every_time' | 'trusted_actions' | 'advanced_autonomy'
+  },
   updates: {
-    checkOnStart: true, // v0.3.36: ask GitHub Releases for a newer version (notify only, never installs)
+    checkOnStart: true,
+    autoDownload: true,
     skippedVersion: '', // a version the user chose "Skip" for
   },
   audio: {
     enabled: true,
-    masterVolume: 0.75,
+    masterVolume: 0.55,
+    outputProfile: 'medium', // 'low' | 'medium' | 'high'
+    micDeviceId: 'default',
+    echoCancellation: false,
+    noiseSuppression: true,
+    autoGainControl: false,
+    voiceOutputVolume: 0.75,
+    sfxVolumes: {
+      startup: 0.65,
+      wake: 0.75,
+      listening: 0.7,
+      thinking: 0.55,
+      response: 0.7,
+      panel: 0.55,
+      mode: 0.6,
+      error: 0.7,
+    },
     soundEffects: {
       startup: true,
       wake: true,
@@ -100,6 +124,11 @@ class ConfigService {
           merged.appearance.popupOrbSizeMigratedV5 = true; this.didMigrate = true;
         }
         if (!['nexora', 'nexo', 'nexie', 'robot'].includes(merged.appearance?.orbProfile)) { merged.appearance.orbProfile = DEFAULT_CONFIG.appearance.orbProfile; this.didMigrate = true; }
+        if (!['low', 'medium', 'high'].includes(merged.audio?.outputProfile)) { merged.audio.outputProfile = DEFAULT_CONFIG.audio.outputProfile; this.didMigrate = true; }
+        if (typeof merged.setup?.permissionPreset === 'string') {
+          merged.setup.permissionPreset = merged.setup.permissionPreset.replace(/-/g, '_');
+        }
+        if (!['ask_every_time', 'trusted_actions', 'advanced_autonomy'].includes(merged.setup?.permissionPreset)) { merged.setup.permissionPreset = DEFAULT_CONFIG.setup.permissionPreset; this.didMigrate = true; }
         return merged;
       }
     } catch (err) {
@@ -171,5 +200,6 @@ function getConfigService() {
 
 module.exports = {
   getConfigService,
+  ConfigService,
   DEFAULT_CONFIG,
 };

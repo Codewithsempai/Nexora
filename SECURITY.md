@@ -15,9 +15,11 @@ Please update before reporting.
 
 Use one of these:
 
-1. **GitHub private reporting (preferred):** on the repository page open
-   **Security -> Report a vulnerability**. Only the maintainer can see it.
-2. **Email:** `<your-security-contact-email>` with the subject `NEXORA security`.
+1. **GitHub private reporting (preferred):** open
+   `https://github.com/codewithsempai-daya/nexora/security/advisories/new` on the
+   repository page (**Security -> Report a vulnerability**). Only the maintainer
+   can see it.
+2. **GitHub Issues (non-sensitive issues only):** `https://github.com/codewithsempai-daya/nexora/issues`.
 
 Please include:
 - what is affected (file, feature, version) and the impact;
