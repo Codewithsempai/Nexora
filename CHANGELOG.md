@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 - test update (2026-11-27)
+
+- Test release to check the update badge.
+
 ## 0.4.0 — Phase 3: ship-ready (2026-11-25)
 
 **Packaging and releases**
