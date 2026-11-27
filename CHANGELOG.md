@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.2 - update flow check (2026-11-27)
+
+- Second test release: confirms that 0.4.1 finds, downloads and installs an update from GitHub Releases.
+- Release builds now check line endings, so the Windows CI no longer fails on CRLF checkouts (`.gitattributes`).
+
 ## 0.4.1 - test update (2026-11-27)
 
 - Test release to check the update badge.

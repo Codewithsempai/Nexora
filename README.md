@@ -13,7 +13,7 @@
 <p align="center"><strong>A little AI buddy that lives on your screen, hears its name, talks back and gets things done.</strong></p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/Version-0.4.1-78ffe2?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/Version-0.4.2-78ffe2?style=for-the-badge">
   <img alt="AGPL-3.0 License" src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg?style=for-the-badge">
   <img alt="Windows" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=for-the-badge&logo=windows&logoColor=white">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-33-47848F?style=for-the-badge&logo=electron&logoColor=white">
