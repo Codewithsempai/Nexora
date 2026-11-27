@@ -1,0 +1,23 @@
+# Keep text files LF in every checkout (including the Windows CI runner),
+# so tests that match multi-line strings behave the same everywhere.
+* text=auto eol=lf
+
+# Windows batch files need CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Never touch binaries
+*.png binary
+*.jpg binary
+*.gif binary
+*.webp binary
+*.webm binary
+*.mp4 binary
+*.ico binary
+*.onnx binary
+*.fbx binary
+*.vrm binary
+*.glb binary
+*.zip binary
+*.exe binary
+*.node binary
