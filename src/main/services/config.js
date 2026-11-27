@@ -8,7 +8,7 @@ const path = require('path');
 const { AUTONOMY_DEFAULTS } = require('../autonomy/defaults');
 
 const DEFAULT_CONFIG = {
-  version: '0.3.25',
+  version: require('../../../package.json').version, // single source of truth
   performance: { mode: 'medium' },
   appearance: {
     theme: 'dark-amber',
@@ -46,10 +46,14 @@ const DEFAULT_CONFIG = {
     skippedApiKey: false,
     permissionPreset: 'ask_every_time', // 'ask_every_time' | 'trusted_actions' | 'advanced_autonomy'
   },
+  memory: {
+    semanticRecall: true, // v0.4.0: also recall notes by meaning via Gemini embeddings (needs the API key; falls back to keywords)
+  },
   updates: {
     checkOnStart: true,
     autoDownload: true,
     skippedVersion: '', // a version the user chose "Skip" for
+    lastSeenVersion: '', // newest version whose "What's new" popup the user has been shown
   },
   audio: {
     enabled: true,

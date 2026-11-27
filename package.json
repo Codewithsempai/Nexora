@@ -1,12 +1,12 @@
 {
   "name": "nexora",
-  "version": "0.3.25",
+  "version": "0.4.0",
   "description": "NEXORA — Desktop AI Assistant (Phase 3 Live Voice + Wake Word + Memory + Reminders + Robot Orb)",
   "main": "src/main/application/app.js",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "test": "node tests/unit/run-tests.js && node tests/unit/live-tools-test.js && node tests/unit/tts-test.js && node tests/unit/categories-test.js && node tests/unit/alert-test.js && node tests/unit/autonomy-test.js && node tests/unit/voice-task-test.js && node tests/unit/apps-voice-screen-test.js && node tests/unit/wake-live-test.js && node tests/unit/download-voice-test.js && node tests/unit/model-health-test.js && node tests/unit/robot-test.js && node tests/unit/autonomy-v014-test.js && node tests/unit/wake-v015-test.js && node tests/unit/window-glass-test.js && node tests/unit/wake-onnx-test.js && node tests/unit/telemetry-test.js && node tests/unit/update-test.js && node tests/unit/updater-test.js && node tests/unit/packaging-test.js && node tests/unit/audio-isolation-test.js && node tests/unit/setup-wizard-test.js",
+    "test": "node tests/unit/run-tests.js && node tests/unit/live-tools-test.js && node tests/unit/tts-test.js && node tests/unit/categories-test.js && node tests/unit/alert-test.js && node tests/unit/autonomy-test.js && node tests/unit/voice-task-test.js && node tests/unit/apps-voice-screen-test.js && node tests/unit/wake-live-test.js && node tests/unit/download-voice-test.js && node tests/unit/model-health-test.js && node tests/unit/robot-test.js && node tests/unit/autonomy-v014-test.js && node tests/unit/wake-v015-test.js && node tests/unit/window-glass-test.js && node tests/unit/wake-onnx-test.js && node tests/unit/telemetry-test.js && node tests/unit/update-test.js && node tests/unit/updater-test.js && node tests/unit/packaging-test.js && node tests/unit/audio-isolation-test.js && node tests/unit/setup-wizard-test.js && node tests/unit/version-sync-test.js && node tests/unit/v040-test.js",
     "test:e2e": "node tests/e2e/smoke.js",
     "version:sync": "node tools/sync-version.js",
     "build:rust": "cargo build --manifest-path native/rust/Cargo.toml --release",
@@ -42,6 +42,7 @@
       "NOTICE",
       "PRIVACY.md",
       "SECURITY.md",
+      "CHANGELOG.md",
       "!src/**/*.map",
       "!assets/robot/**/*",
       "!tests/**/*",
@@ -99,11 +100,15 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "codewithsempai-daya",
-        "repo": "nexora",
+        "owner": "Codewithsempai",
+        "repo": "Nexora",
         "releaseType": "release"
       }
     ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Codewithsempai/Nexora.git"
   },
   "keywords": [
     "nexora",

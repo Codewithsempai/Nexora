@@ -10,7 +10,7 @@ const path = require('path');
   try { ({ _electron } = require('playwright')); } catch { console.log('e2e skipped: playwright is not installed (npm install)'); return; }
   const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'nexora-e2e-'));
   const app = await _electron.launch({
-    args: ['.'],
+    args: ['.', `--user-data-dir=${userData}`],
     cwd: path.join(__dirname, '..', '..'),
     env: { ...process.env, NEXORA_USER_DATA: userData },
     timeout: 60000,

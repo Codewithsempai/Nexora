@@ -26,6 +26,7 @@ export class Titlebar {
           </div>
         </div>
         <div class="titlebar-controls">
+          <button class="titlebar-update-badge" id="titlebarUpdateBadge" type="button" hidden aria-live="polite"><span class="update-badge-dot" aria-hidden="true"></span><span id="titlebarUpdateText">Update available</span></button>
           <button class="titlebar-btn btn-minimize" id="btnMinimize" title="Minimize" aria-label="Minimize"><svg width="10" height="1" viewBox="0 0 10 1"><rect width="10" height="1" fill="currentColor"/></svg></button>
           <button class="titlebar-btn btn-maximize" id="btnMaximize" title="Maximize / Restore" aria-label="Maximize"><svg width="10" height="10" viewBox="0 0 10 10" id="maximizeIcon"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor"/></svg></button>
           <button class="titlebar-btn btn-close" id="btnClose" title="Close" aria-label="Close"><svg width="10" height="10" viewBox="0 0 10 10"><line x1="0" y1="0" x2="10" y2="10" stroke="currentColor" stroke-width="1.2"/><line x1="10" y1="0" x2="0" y2="10" stroke="currentColor" stroke-width="1.2"/></svg></button>
@@ -33,7 +34,22 @@ export class Titlebar {
       </div>`;
   }
 
+  /** Small "Update available" pill. mode: 'available' | 'downloading' | 'ready' | null (hides it). */
+  setUpdateBadge({ mode = null, version = '', percent = 0 } = {}) {
+    const badge = this.container.querySelector('#titlebarUpdateBadge');
+    const text = this.container.querySelector('#titlebarUpdateText');
+    if (!badge || !text) return;
+    if (!mode) { badge.hidden = true; delete badge.dataset.mode; return; }
+    const v = version ? ` v${version}` : '';
+    text.textContent = mode === 'ready' ? 'Restart to update' : (mode === 'downloading' ? `Updating ${Math.round(percent || 0)}%` : 'Update available');
+    badge.title = mode === 'ready' ? `NEXORA${v} is ready. Open Support & Updates to install.` : (mode === 'downloading' ? `Downloading NEXORA${v}...` : `NEXORA${v} is available. Click for details.`);
+    badge.dataset.mode = mode;
+    badge.hidden = false;
+  }
+
   async initEvents() {
+    const badgeBtn = this.container.querySelector('#titlebarUpdateBadge');
+    badgeBtn?.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); this.options.onUpdateBadgeClick?.(); });
     const api = window.nexoraAPI?.window;
     if (!api) return;
 

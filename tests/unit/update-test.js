@@ -11,14 +11,14 @@ assert.strictEqual(compareVersions('0.3.26', '0.3.25'), 1);
 assert.strictEqual(compareVersions('v0.10.0', '0.9.9'), 1);
 assert.strictEqual(compareVersions('0.3.25', '0.3.25'), 0);
 assert.strictEqual(compareVersions('0.3.24', '0.3.25'), -1);
-assert(isReleaseUrl('https://github.com/codewithsempai-daya/nexora/releases/tag/v1.0.0'));
-assert(!isReleaseUrl('https://evil.example/codewithsempai-daya/nexora/releases'));
-assert(!isReleaseUrl('http://github.com/codewithsempai-daya/nexora/releases'));
+assert(isReleaseUrl('https://github.com/Codewithsempai/Nexora/releases/tag/v1.0.0'));
+assert(!isReleaseUrl('https://evil.example/Codewithsempai/Nexora/releases'));
+assert(!isReleaseUrl('http://github.com/Codewithsempai/Nexora/releases'));
 assert(!isReleaseUrl('file:///C:/Windows/System32/calc.exe'));
 
 const mkCfg = (init = {}) => { const m = { ...init }; return { get: (k) => m[k], set: (k, v) => { m[k] = v; return true; } }; };
 const reply = (body, status = 200) => async () => ({ ok: status >= 200 && status < 300, status, json: async () => body });
-const rel = { tag_name: 'v0.4.0', name: 'NEXORA 0.4.0', html_url: 'https://github.com/codewithsempai-daya/nexora/releases/tag/v0.4.0', body: 'notes', draft: false, prerelease: false };
+const rel = { tag_name: 'v0.4.0', name: 'NEXORA 0.4.0', html_url: 'https://github.com/Codewithsempai/Nexora/releases/tag/v0.4.0', body: 'notes', draft: false, prerelease: false };
 
 (async () => {
   let got = []; const cfg = mkCfg();

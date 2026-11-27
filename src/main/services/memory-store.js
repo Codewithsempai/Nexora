@@ -2,6 +2,7 @@
 /* NEXORA encrypted, user-managed persistent memory vault. */
 const fs = require('fs');
 const { tamilToLatin } = require('./memory-learner');
+const { rank: rankNotes } = require('./memory-search');
 const path = require('path');
 const crypto = require('crypto');
 const MEMORY_CATEGORIES = ['personal', 'preferences', 'knowledge', 'projects', 'conversations'];
@@ -211,6 +212,38 @@ class MemoryStore {
     return saved.success ? { success: true, item } : saved;
   }
 
+  /** Everything in the vault as a plain, portable object (the Memory panel saves it as JSON). */
+  exportData() {
+    const result = this.readAll();
+    if (!result.success) return result;
+    return { success: true, data: { format: 'nexora-memory', version: 1, exportedAt: new Date().toISOString(), items: result.items.map((item) => ({ ...item })) } };
+  }
+
+  /** Merge notes from an export. Skips duplicates, validates every note, never overwrites what is already saved. */
+  importItems(data) {
+    const incoming = Array.isArray(data) ? data : (data && Array.isArray(data.items) ? data.items : null);
+    if (!incoming) return { success: false, error: 'This file is not a NEXORA memory export.' };
+    const result = this.readAll();
+    if (!result.success) return result;
+    const items = result.items.slice();
+    const seen = new Set(items.map((item) => normalizeText(item.text)));
+    let added = 0; let skipped = 0; let invalid = 0;
+    for (const raw of incoming) {
+      const ok = raw && typeof raw === 'object' && MEMORY_CATEGORIES.includes(raw.category) && typeof raw.text === 'string' && raw.text.trim() && raw.text.trim().length <= MAX_TEXT_LENGTH;
+      if (!ok) { invalid += 1; continue; }
+      const text = raw.text.trim();
+      if (seen.has(normalizeText(text))) { skipped += 1; continue; }
+      seen.add(normalizeText(text));
+      const now = Date.now();
+      const item = { id: crypto.randomUUID(), category: raw.category, text, createdAt: Number(raw.createdAt) || now, updatedAt: Number(raw.updatedAt) || now, source: 'manual' };
+      if (typeof raw.key === 'string' && raw.key) item.key = raw.key.slice(0, 60);
+      if (typeof raw.value === 'string' && raw.value.trim()) item.value = raw.value.trim().slice(0, 120);
+      items.push(item); added += 1;
+    }
+    if (added) { const saved = this.write(items); if (!saved.success) return saved; this.emitChange({ type: 'import', count: added, source: 'manual' }); }
+    return { success: true, added, skipped, invalid };
+  }
+
   /** Counts for the Memory panel header. */
   stats() {
     const result = this.readAll();
@@ -243,16 +276,17 @@ class MemoryStore {
     return score;
   }
 
+  /** Keyword + synonym + typo-tolerant ranking (BM25). Returns items, best first. Offline. */
+  lexicalRank(query, items) {
+    return rankNotes(query, items, { tokenize, toLatin: tamilToLatin }).map((entry) => entry.item);
+  }
+
   search(query, category = 'all', limit = 6) {
     if (typeof query !== 'string' || !query.trim()) return { success: true, items: [] };
     const result = this.list(category);
     if (!result.success) return result;
-    const terms = tokenize(query);
-    if (!terms.length) return { success: true, items: [] };
-    const ranked = result.items.map((item) => ({ item, score: this.scoreItem(item, terms) }))
-      .filter((entry) => entry.score > 0)
-      .sort((a, b) => b.score - a.score || b.item.updatedAt - a.item.updatedAt);
-    return { success: true, items: ranked.slice(0, Math.max(1, Math.min(20, limit))).map((entry) => entry.item) };
+    const ranked = this.lexicalRank(query, result.items);
+    return { success: true, items: ranked.slice(0, Math.max(1, Math.min(20, limit))) };
   }
 
   /** Remove memories that clearly match a "forget ..." request. Returns the removed texts. */
@@ -286,7 +320,7 @@ class MemoryStore {
    * Context for the model: everything about the user (preferences, newest first) is ALWAYS included,
    * then the notes that match the question, then a few recent notes so memory is never silently empty.
    */
-  buildContext(query = '') {
+  buildContext(query = '', { matches = null } = {}) {
     const result = this.list('all');
     if (!result.success || !result.items.length) return '';
     const items = result.items;
@@ -296,10 +330,9 @@ class MemoryStore {
     items.filter((item) => item.category === 'personal').sort(newest).slice(0, 20).forEach(take);
     items.filter((item) => item.category === 'preferences').sort(newest).slice(0, 12).forEach(take);
     items.filter((item) => item.category === 'projects').sort(newest).slice(0, 6).forEach(take);
-    const terms = tokenize(query);
-    const matches = items.map((item) => ({ item, score: this.scoreItem(item, terms) })).filter((entry) => entry.score > 0)
-      .sort((a, b) => b.score - a.score || newest(a.item, b.item)).slice(0, 8);
-    matches.forEach((entry) => take(entry.item));
+    // `matches` lets the semantic layer hand in its own (meaning-based) order; otherwise keyword ranking.
+    const found = Array.isArray(matches) ? matches : this.lexicalRank(query, items);
+    found.slice(0, 8).forEach(take);
     items.slice().sort(newest).slice(0, 4).forEach(take);
     const lines = []; let used = 0;
     for (const item of picked) {

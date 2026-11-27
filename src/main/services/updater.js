@@ -1,4 +1,5 @@
 /* NEXORA — Production Auto-Update Service (electron-updater + GitHub Releases)
+ * THIS is the updater the app runs. update-checker.js is only its read-only helper for dev builds.
  * Keeps all update transport, metadata validation, download tracking, and restart
  * logic strictly inside the Electron main process. Preserves userData across updates. */
 
@@ -133,7 +134,7 @@ class UpdaterService {
     checkIntervalMs = DEFAULT_CHECK_INTERVAL_MS,
   } = {}) {
     this.app = app || null;
-    this.currentVersion = String(currentVersion || app?.getVersion?.() || '0.3.25');
+    this.currentVersion = String(currentVersion || app?.getVersion?.() || require('../../../package.json').version);
     this.isPackaged = typeof isPackaged === 'boolean' ? isPackaged : !!app?.isPackaged;
     this.configService = configService || null;
     this.loadAutoUpdater = loadAutoUpdater;
@@ -181,6 +182,12 @@ class UpdaterService {
     };
   }
 
+  /** Tell the window the result of a spoken/typed "check for updates" so it can show a toast. */
+  announce(result) { try { this.onEvent('update:command-result', result); } catch { /* ignore */ } }
+
+  /** The version the user chose to skip, or '' (shown in Settings so "Skip" is visibly remembered). */
+  skippedVersion() { return String(this.configService?.get?.('updates.skippedVersion') || ''); }
+
   hasTestFeed() {
     return this.env?.NEXORA_ALLOW_TEST_FEED === '1' && isLoopbackTestUrl(this.env?.NEXORA_TEST_FEED_URL);
   }
@@ -202,6 +209,7 @@ class UpdaterService {
       autoCheck: this.isAutoCheckEnabled(),
       autoDownload: this.isAutoDownloadEnabled(),
       packaged: this.isPackaged,
+      skippedVersion: this.skippedVersion(),
       progress: { ...this.state.progress },
     };
   }
@@ -282,6 +290,11 @@ class UpdaterService {
       }
 
       const skipped = this.configService?.get?.('updates.skippedVersion');
+      if (skipped === valid.version && !this.manualCheckPending) {
+        // The user chose "Skip this version": stay quiet (no badge, no toast, no download) until a newer one appears.
+        this.updateState({ status: 'up-to-date', availableVersion: null, updateAvailable: false, releaseNotes: '', lastCheckedAt: Date.now(), error: null });
+        return;
+      }
       const notes = sanitizeReleaseNotes(info.releaseNotes);
       const releaseUrl = formatReleaseUrl(valid.version);
       const patch = {
@@ -421,20 +434,21 @@ class UpdaterService {
           // Dev build: inspect GitHub Releases read-only via HTTPS without attempting binary overwrite.
           this.updateState({ status: 'checking', error: null });
           const res = await this.updateChecker.check({ manual: true });
-          if (res.status === 'available' && res.info) {
-            const notes = sanitizeReleaseNotes(res.info.notes);
-            const url = isReleaseUrl(res.info.url, UPDATE_REPO) ? res.info.url : formatReleaseUrl(res.info.version);
+          const found = res.latest;
+          if (res.status === 'available' && found && (manual || this.skippedVersion() !== found.version)) {
+            const notes = sanitizeReleaseNotes(found.notes);
+            const url = isReleaseUrl(found.url, UPDATE_REPO) ? found.url : formatReleaseUrl(found.version);
             return this.updateState({
               status: 'available',
-              availableVersion: res.info.version,
-              releaseName: res.info.name || `NEXORA v${res.info.version}`,
+              availableVersion: found.version,
+              releaseName: found.name || `NEXORA v${found.version}`,
               releaseNotes: notes,
-              releaseDate: res.info.publishedAt || null,
+              releaseDate: found.publishedAt || null,
               releaseUrl: url,
               updateAvailable: true,
               lastCheckedAt: Date.now(),
               error: null,
-            }, 'update:available', { version: res.info.version, name: res.info.name, notes, url });
+            }, 'update:available', { version: found.version, name: found.name, notes, url });
           }
           if (res.status === 'error') {
             return this.updateState({ status: 'error', lastCheckedAt: Date.now(), error: res.error || 'Could not reach GitHub Releases.' }, 'update:error', { error: res.error });
@@ -537,7 +551,7 @@ class UpdaterService {
   skipVersion(version) {
     if (!parseVersion(version)) return false;
     this.configService?.set?.('updates.skippedVersion', String(version).replace(/^v/i, ''));
-    this.updateState({ status: 'up-to-date', updateAvailable: false });
+    this.updateState({ status: 'up-to-date', availableVersion: null, updateAvailable: false, updateDownloaded: false, downloadedVersion: null, releaseNotes: '' });
     return true;
   }
 

@@ -18,6 +18,7 @@ import { SettingsPanel } from '../settings/settings-panel.js';
 import { MemoryPanel } from '../memory/memory-panel.js';
 import { ReminderPanel } from '../reminders/reminder-panel.js';
 import { ToastCenter } from '../components/toast.js';
+import { WhatsNewDialog } from '../components/whats-new.js';
 import { AutonomyPanel } from '../autonomy/autonomy-panel.js';
 import { SetupWizard } from '../setup/setup-wizard.js';
 
@@ -81,6 +82,7 @@ class NexoraApp {
     const titlebarContainer = document.getElementById('titlebarContainer');
     this.titlebar = new Titlebar(titlebarContainer, {
       onSound: (name) => this.playSound(name),
+      onUpdateBadgeClick: () => this.openUpdatesSettings(),
     });
 
     // 4. Initialize Navigation
@@ -314,6 +316,12 @@ class NexoraApp {
     });
   }
 
+  /** Open Settings on "Support & Updates" (used by the title-bar badge). */
+  openUpdatesSettings() {
+    if (this.activePanel !== PANELS.SETTINGS) this.setPanel(PANELS.SETTINGS);
+    this.settingsPanel?.activateSettingsSection?.(9);
+  }
+
   updateQuickStateButtons(currentState) {
     document.querySelectorAll('.orb-mode-chip').forEach((btn) => {
       const mode = btn.dataset.mode;
@@ -425,6 +433,41 @@ class NexoraApp {
       });
     });
     api?.updates?.state?.().then((st) => { if (st?.currentVersion || st?.current) this.currentVersion = st.currentVersion || st.current; }).catch(() => {});
+
+    // Title-bar "Update available" badge: follows the updater state so users see it without opening Settings.
+    const syncBadge = (st = {}) => {
+      if (!st || typeof st !== 'object') return;
+      const version = st.downloadedVersion || st.availableVersion || '';
+      if (st.updateDownloaded && st.status === 'downloaded') this.titlebar?.setUpdateBadge({ mode: 'ready', version });
+      else if (st.status === 'downloading') this.titlebar?.setUpdateBadge({ mode: 'downloading', version, percent: st.progress?.percent });
+      else if (st.updateAvailable && st.status === 'available') this.titlebar?.setUpdateBadge({ mode: 'available', version });
+      else this.titlebar?.setUpdateBadge({ mode: null });
+    };
+    api?.updates?.onState?.(syncBadge);
+    api?.updates?.onProgress?.(syncBadge);
+    api?.updates?.onDownloaded?.(syncBadge);
+    api?.updates?.onAvailable?.(() => { void api.updates.state?.().then(syncBadge).catch(() => {}); });
+    api?.updates?.state?.().then(syncBadge).catch(() => {});
+
+    // "Nexora, check for updates" (typed or spoken) -> short result toast.
+    api?.updates?.onCommandResult?.((r = {}) => {
+      const text = r.status === 'downloaded' ? `v${r.version} is downloaded. Press Update Now to restart into it.`
+        : r.status === 'available' ? `v${r.version} is available${r.packaged ? ' and downloading.' : ' on GitHub.'}`
+        : r.status === 'up-to-date' ? `You are up to date${r.current ? ` (v${r.current})` : ''}.`
+        : r.status === 'disabled' ? 'Update checks are switched off in Settings → Support & Updates.'
+        : (r.error || 'Could not check for updates.');
+      this.toasts.show({ kind: 'update', title: r.status === 'available' || r.status === 'downloaded' ? 'Update found' : 'Update check', text, timeout: 6000 });
+    });
+
+    // "What's new" after an update (once per version; text from CHANGELOG.md).
+    setTimeout(() => {
+      api?.updates?.whatsNew?.().then((wn) => {
+        if (!wn?.show || !wn.text) return;
+        const seen = () => { void api.updates.whatsNewSeen?.(); };
+        const latest = wn.sections?.[0]?.version || wn.version;
+        new WhatsNewDialog({ version: wn.version, text: wn.text, onClose: seen, onFullNotes: () => api.updates.open?.(`https://github.com/Codewithsempai/Nexora/releases/tag/v${latest}`) });
+      }).catch(() => {});
+    }, 3000);
 
     // Memory: tell the user the moment something is saved, unless the Memory panel is already open showing it live.
     api?.memory?.onChanged?.((event = {}) => {

@@ -1698,3 +1698,33 @@ html.is-maximized .nexora-app-shell { width:100vw !important; height:100vh !impo
 @media (prefers-reduced-motion: reduce) {
   .setup-brand-emblem { animation: none; }
 }
+
+/* ---- v0.4.0: update badge (title bar) + "What's new" dialog ---- */
+.titlebar-update-badge { display:inline-flex; align-items:center; gap:7px; height:26px; padding:0 11px; margin-right:6px; align-self:center; border-radius:999px; border:1px solid rgba(120,255,226,.45); background:rgba(120,255,226,.10); color:#78ffe2; font:600 11px/1 inherit; letter-spacing:.02em; cursor:pointer; -webkit-app-region:no-drag; white-space:nowrap; }
+.titlebar-update-badge[hidden] { display:none; }
+.titlebar-update-badge:hover { background:rgba(120,255,226,.18); }
+.titlebar-update-badge .update-badge-dot { width:7px; height:7px; border-radius:50%; background:#78ffe2; box-shadow:0 0 8px #78ffe2; animation:updateBadgePulse 1.8s ease-in-out infinite; }
+.titlebar-update-badge[data-mode="ready"] { border-color:rgba(255,200,87,.6); background:rgba(255,200,87,.12); color:#ffc857; }
+.titlebar-update-badge[data-mode="ready"] .update-badge-dot { background:#ffc857; box-shadow:0 0 8px #ffc857; }
+@keyframes updateBadgePulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.45; transform:scale(.75); } }
+@media (max-width: 760px) { .titlebar-update-badge #titlebarUpdateText { display:none; } .titlebar-update-badge { padding:0 8px; } }
+
+.whats-new-overlay { position:fixed; inset:0; z-index:5000; display:flex; align-items:center; justify-content:center; padding:24px; background:rgba(4,7,12,.62); backdrop-filter:blur(6px); }
+.whats-new-card { width:min(560px,100%); max-height:min(78vh,640px); display:flex; flex-direction:column; gap:12px; padding:20px 22px; border-radius:18px; background:rgba(18,24,34,.94); border:1px solid rgba(120,255,226,.35); box-shadow:0 24px 70px rgba(0,0,0,.6); color:rgba(240,244,250,.92); }
+.whats-new-title { margin:0; font-size:18px; font-weight:700; color:#78ffe2; }
+.whats-new-body { overflow-y:auto; padding-right:6px; font-size:13px; line-height:1.5; }
+.whats-new-body h3 { margin:6px 0 4px; font-size:13px; color:#fff; }
+.whats-new-body p { margin:8px 0 3px; }
+.whats-new-body p.whats-new-heading { font-weight:700; color:rgba(120,255,226,.9); }
+.whats-new-body ul { margin:3px 0 6px; padding-left:18px; }
+.whats-new-body li { margin:3px 0; }
+.whats-new-body code { padding:1px 5px; border-radius:5px; background:rgba(255,255,255,.08); font-size:12px; }
+.whats-new-actions { display:flex; justify-content:flex-end; gap:8px; }
+.whats-new-actions button { padding:8px 16px; border-radius:10px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:inherit; cursor:pointer; font-weight:600; }
+.whats-new-actions button.primary { background:#78ffe2; border-color:#78ffe2; color:#06241e; }
+
+/* ---- v0.4.0: setup wizard wake-command card ---- */
+.setup-wake-phrases { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 2px; }
+.setup-wake-phrases span { padding:5px 12px; border-radius:999px; border:1px solid rgba(120,255,226,.4); background:rgba(120,255,226,.08); color:#78ffe2; font-weight:600; font-size:12.5px; }
+.setup-wake-examples { margin:8px 0 0; padding-left:18px; font-size:12.5px; line-height:1.55; color:rgba(240,244,250,.78); }
+.setup-wake-off-note { margin-top:8px; font-size:12px; color:rgba(255,200,87,.9); }

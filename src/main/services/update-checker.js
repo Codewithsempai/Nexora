@@ -1,14 +1,16 @@
 /* ==========================================================================
-   NEXORA — Update notifier (check + notify only)
-   Asks GitHub Releases whether a newer version exists and tells the window.
-   It NEVER downloads or installs anything: the user opens the release page
-   and installs the new version themselves.
+   NEXORA — GitHub release lookup (read-only helper)
+   WHICH FILE RUNS?  `updater.js` (UpdaterService) is the one the app runs.
+   Installed builds: UpdaterService uses electron-updater to download and install.
+   Dev builds (npm start): UpdaterService calls THIS file to look at GitHub
+   Releases read-only, because a dev build must never overwrite itself.
+   This file never downloads or installs anything. It also owns the shared
+   helpers (parseVersion, compareVersions, isReleaseUrl).
    Only one request is made: GET api.github.com/repos/<owner>/<repo>/releases/latest
    (no identifiers, no cookies, no body). Switch off: Settings -> Support & Updates.
    ========================================================================== */
 
-// TODO(owner): set this to your real GitHub "owner/repo".
-const UPDATE_REPO = 'codewithsempai-daya/nexora';
+const UPDATE_REPO = 'Codewithsempai/Nexora';
 const CHECK_DELAY_MS = 20 * 1000;          // first check shortly after start-up
 const CHECK_EVERY_MS = 24 * 60 * 60 * 1000; // then once a day
 const TIMEOUT_MS = 10 * 1000;

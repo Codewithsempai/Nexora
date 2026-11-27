@@ -298,13 +298,20 @@ export class SetupWizard {
           <div class="setting-row">
             <div>
               <span style="display:block;font-weight:600;">Enable Offline Wake Word</span>
-              <small style="color:rgba(255,255,255,0.68);">Say “Hey NEXORA” or “NEXORA” locally via ONNX before connecting to Gemini.</small>
+              <small style="color:rgba(255,255,255,0.68);">Turn on the wake-up command so you can start NEXORA hands-free, without touching the mouse. Detection runs locally via ONNX before anything reaches Gemini.</small>
             </div>
             <label class="setting-toggle">
               <input type="checkbox" id="wizardWakeToggle" ${this.state.wakeWordEnabled ? 'checked' : ''} />
               <span class="toggle-slider"></span>
             </label>
           </div>
+          <div class="setup-wake-phrases" aria-label="Wake-up commands"><span>“Hey NEXORA”</span><span>“NEXORA”</span></div>
+          <ul class="setup-wake-examples">
+            <li>After the wake word, just talk: <em>“Nexora, remind me to call mom at 5 pm.”</em></li>
+            <li><em>“Nexora, check for updates.”</em> checks for a new version.</li>
+            <li>Say <em>“mute”</em> to send NEXORA back to wake standby.</li>
+          </ul>
+          <div class="setup-wake-off-note" id="wizardWakeOffNote" ${this.state.wakeWordEnabled ? 'hidden' : ''}>Wake word is off. You can still talk with the mic button or your hotkey, and turn it on later in Settings → Wake Word.</div>
           <div class="setup-inline-actions">
             <button type="button" class="btn-primary" id="wizardWakeTestBtn">${this.wakeTesting ? 'Stop Wake Test' : 'Test Wake Word'}</button>
           </div>
@@ -346,7 +353,7 @@ export class SetupWizard {
         <div class="setup-summary-grid">
           <div class="setup-summary-item"><span>Gemini API Key</span><strong>${this.state.keyConfigured ? 'Encrypted & Connected' : 'Not Set'}</strong></div>
           <div class="setup-summary-item"><span>Microphone</span><strong>${escapeHtml(micLabel)}${this.state.micTested ? ' (Tested)' : ''}</strong></div>
-          <div class="setup-summary-item"><span>Wake Word</span><strong>${this.state.wakeWordEnabled ? 'Enabled (Offline ONNX)' : 'Disabled'}</strong></div>
+          <div class="setup-summary-item"><span>Wake Word</span><strong>${this.state.wakeWordEnabled ? 'Enabled: say “Hey NEXORA”' : 'Disabled'}</strong></div>
           <div class="setup-summary-item"><span>Appearance</span><strong>${escapeHtml((APPEARANCE_OPTIONS.find((o) => o.id === this.state.orbProfile) || APPEARANCE_OPTIONS[0]).title)}</strong></div>
           <div class="setup-summary-item setup-summary-item-wide"><span>Action Safety Level</span><strong>${escapeHtml(preset.title)}</strong></div>
         </div>`;
@@ -611,6 +618,7 @@ export class SetupWizard {
 
     toggle?.addEventListener('change', async () => {
       this.state.wakeWordEnabled = !!toggle.checked;
+      const offNote = this.container.querySelector('#wizardWakeOffNote'); if (offNote) offNote.hidden = this.state.wakeWordEnabled;
       await window.nexoraAPI?.config?.set?.('voice.wakeWordEnabled', this.state.wakeWordEnabled);
       if (!this.state.wakeWordEnabled && this.wakeTesting) {
         await this.stopWakeTest();
@@ -768,7 +776,7 @@ export class SetupWizard {
       await api?.voice?.setOrbProfile?.(this.state.orbProfile);
       await api?.autonomy?.applyPreset?.(this.state.permissionLevel);
       await api?.config?.set?.('setup.completed', true);
-      await api?.config?.set?.('setup.version', this.app?.currentVersion || '0.3.25');
+      await api?.config?.set?.('setup.version', this.app?.currentVersion || '0.4.0');
       await api?.config?.set?.('setup.completedAt', new Date().toISOString());
 
       this.app?.orbEngine?.setProfile?.(this.state.orbProfile);

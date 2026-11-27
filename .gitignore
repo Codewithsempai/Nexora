@@ -1,10 +1,20 @@
+# Dependencies
 node_modules/
-target/
+
+# Build output (installer goes to dist/, see docs/BUILD_AND_RELEASE.md)
 dist/
 release/
+/target/
+target/
+native/rust/target/
+*.zip
+
+# Secrets
 .env
 .env.*
 *.enc
+
+# Logs / OS
 *.log
 .DS_Store
 Thumbs.db

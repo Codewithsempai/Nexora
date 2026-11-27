@@ -11,7 +11,9 @@ const {
 const { ModelDirectory, classifyFailure } = require('../services/model-ladder');
 const { MemoryStore } = require('../services/memory-store');
 const { MEMORY_RULES } = require('../services/memory-learner');
-const { applyAssistantCommands, applyAssistantCommandsSmart, commandNotice, REMINDER_RULES } = require('../services/assistant-commands');
+const { applyAssistantCommands, applyAssistantCommandsSmart, commandNotice, updateSummary, REMINDER_RULES } = require('../services/assistant-commands');
+const { getWhatsNew, markWhatsNewSeen } = require('../services/whats-new');
+const { SemanticMemory } = require('../services/memory-embeddings');
 const { parseReminder, formatDue } = require('../services/reminder-parser');
 const { pickExtractModels } = require('../services/memory-extractor');
 const { TtsService } = require('../services/tts-service');
@@ -29,17 +31,25 @@ function registerIpcHandlers(windowManager, configService, sidecarManager, hotke
   const activeRequests = new Map();
   const modelDirectory = suppliedModelDirectory || new ModelDirectory();
   const memoryStore = new MemoryStore({ filePath: path.join(app.getPath('userData'), 'memory-vault.enc'), safeStorage });
+  // v0.4.0: recall by meaning (Gemini embeddings) on top of keyword ranking; falls back to keywords when offline / switched off.
+  const semanticMemory = new SemanticMemory({
+    store: memoryStore, filePath: `${memoryStore.filePath}.vec`,
+    getApiKey: () => readGeminiKey(), isEnabled: () => configService.get('memory.semanticRecall') !== false,
+  });
+  const syncTimer = setTimeout(() => { void semanticMemory.sync(); }, 8000); syncTimer.unref?.();
   if (voiceService) { voiceService.memoryStore = memoryStore; voiceService.reminderService = reminderService; } // Live voice shares the same vault + reminders
   // Live memory: every save / edit / delete (chat, voice or the panel) is pushed to the window the moment it happens.
   const pushToMain = (channel, payload) => { const win = windowManager.getMainWindow(); if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send(channel, payload); };
-  memoryStore.onChange = (event) => { pushToMain('memory:changed', event); if (['clear', 'forget', 'remove'].includes(event?.type)) { try { voiceService?.onMemoryRemoved?.(); } catch { /* ignore */ } } try { voiceService?.onMemoryChanged?.(); } catch { /* ignore */ } };
+  memoryStore.onChange = (event) => { pushToMain('memory:changed', event); try { semanticMemory.scheduleSync(); } catch { /* recall index is optional */ } if (['clear', 'forget', 'remove'].includes(event?.type)) { try { voiceService?.onMemoryRemoved?.(); } catch { /* ignore */ } } try { voiceService?.onMemoryChanged?.(); } catch { /* ignore */ } };
   if (reminderService) { const previous = reminderService.onChange; reminderService.onChange = (event) => { try { previous?.(event); } catch { /* ignore */ } pushToMain('reminder:changed', event); }; }
   // Set reminders / save / forget anything the user just asked for, then build the prompt for this message.
   // Save / forget / set reminders BEFORE any network call, so they work even with no API key, offline or when Gemini fails.
-  const runCommands = async (prompt, apiKey) => applyAssistantCommandsSmart({ memoryStore, reminderService, text: prompt, source: 'chat', apiKey, models: apiKey ? await pickExtractModels(modelDirectory, apiKey, configService.get('ai.chatModel')) : null });
-  const hasActions = (o) => !!(o && (o.saved.length || o.forgotten.length || o.reminders.length || o.reminderNeedsTime !== null || o.reminderPast !== null));
+  let updaterRef = null; // set once the updater exists (below)
+  const runCommands = async (prompt, apiKey) => applyAssistantCommandsSmart({ memoryStore, reminderService, updater: updaterRef, text: prompt, source: 'chat', apiKey, models: apiKey ? await pickExtractModels(modelDirectory, apiKey, configService.get('ai.chatModel')) : null });
+  const hasActions = (o) => !!(o && (o.updateCheck || o.saved.length || o.forgotten.length || o.reminders.length || o.reminderNeedsTime !== null || o.reminderPast !== null));
   const localConfirm = (o) => {
     const lines = [];
+    if (o.updateCheck) lines.push(updateSummary(o.updateCheck));
     for (const t of o.saved) lines.push(`Saved to memory: ${t}.`);
     for (const t of o.forgotten) lines.push(`Removed from memory: ${t}.`);
     for (const r of o.reminders) lines.push(`Reminder set: “${r.text}” ${r.when}${r.repeat && r.repeat !== 'none' ? ` (repeats ${r.repeat})` : ''}.`);
@@ -49,8 +59,8 @@ function registerIpcHandlers(windowManager, configService, sidecarManager, hotke
   };
   // If Gemini cannot answer, the user still gets a confirmation of what NEXORA already did locally.
   const failWith = (o, error, extra = {}) => (hasActions(o) ? { success: true, text: localConfirm(o), model: 'local', local: true, timestamp: Date.now() } : { success: false, error, ...extra });
-  const buildMemoryInstruction = (prompt, outcome) => {
-    const context = memoryStore.buildContext(prompt);
+  const buildMemoryInstruction = async (prompt, outcome) => {
+    const context = await semanticMemory.buildContext(prompt);
     const notice = commandNotice(outcome);
     if (!context && !notice && !reminderService) return null;
     return { parts: [{ text: `${MEMORY_RULES}${reminderService ? `\n\n${REMINDER_RULES}` : ''}\n\nUser memory:\n${context || '(nothing saved yet)'}${notice ? `\n\n${notice}` : ''}` }] };
@@ -275,7 +285,7 @@ function registerIpcHandlers(windowManager, configService, sidecarManager, hotke
     try { contents = buildContents(prompt, history); } catch (error) { return failWith(outcome, error.message); }
     const selected = configService.get('ai.chatModel') || DEFAULT_GEMINI_MODEL;
     const candidates = await modelDirectory.textOrder(key, selected);
-    const memoryInstruction = buildMemoryInstruction(prompt, outcome);
+    const memoryInstruction = await buildMemoryInstruction(prompt, outcome);
     const body = { contents, generationConfig: { temperature: 0.7 } };
     if (memoryInstruction) body.systemInstruction = memoryInstruction;
     let lastError = null;
@@ -335,7 +345,7 @@ function registerIpcHandlers(windowManager, configService, sidecarManager, hotke
     const timeout = setTimeout(() => controller.abort(new Error('Gemini request timed out after 90 seconds.')), 90000);
     const selected = configService.get('ai.chatModel') || DEFAULT_GEMINI_MODEL;
     const candidates = await modelDirectory.textOrder(key, selected);
-    const memoryInstruction = buildMemoryInstruction(prompt, outcome);
+    const memoryInstruction = await buildMemoryInstruction(prompt, outcome);
     const body = { contents, generationConfig: { temperature: 0.7 } };
     if (memoryInstruction) body.systemInstruction = memoryInstruction;
     let lastError = null;
@@ -385,10 +395,10 @@ function registerIpcHandlers(windowManager, configService, sidecarManager, hotke
     activeRequests.get(requestKey(event.sender.id, requestId))?.abort(new Error('Request cancelled by user.'));
   });
 
-  // Auto-updater (electron-updater + GitHub Releases for codewithsempai-daya/nexora).
+  // Auto-updater (electron-updater + GitHub Releases for Codewithsempai/Nexora).
   const updater = new UpdaterService({
     app,
-    currentVersion: app?.getVersion?.() || configService.get('version') || '0.3.25',
+    currentVersion: app?.getVersion?.() || configService.get('version') || require('../../package.json').version,
     configService,
     isPackaged: !!app?.isPackaged,
     onEvent: (channel, payload) => pushToMain(channel, payload),
@@ -415,6 +425,7 @@ function registerIpcHandlers(windowManager, configService, sidecarManager, hotke
   const baseConfigSet = configService.set.bind(configService);
   configService.set = (keyPath, value) => {
     const ok = baseConfigSet(keyPath, value);
+    if (ok && keyPath === 'memory.semanticRecall') { if (value === false) semanticMemory.clearCache(); else semanticMemory.scheduleSync(500); }
     if (ok && (keyPath === 'updates.checkOnStart' || keyPath === 'updates.check' || keyPath === 'updates.autoDownload')) {
       if (updater.isAutoCheckEnabled()) updater.scheduleTimers();
       else updater.clearTimers();
@@ -422,6 +433,13 @@ function registerIpcHandlers(windowManager, configService, sidecarManager, hotke
     }
     return ok;
   };
+  updaterRef = updater;
+  try { voiceService.updater = updater; } catch { /* voice service is optional */ }
+  const changelogPath = require('path').join(app?.getAppPath?.() || process.cwd(), 'CHANGELOG.md');
+  const appVersion = () => updater.getState().currentVersion;
+  // "What's new" popup after an update: text comes from CHANGELOG.md; shown once per version.
+  ipcMain.handle('update:whats-new', (event) => isTrustedRenderer(event) ? getWhatsNew({ configService, currentVersion: appVersion(), changelogPath }) : { show: false, sections: [], text: '' });
+  ipcMain.handle('update:whats-new-seen', (event) => isTrustedRenderer(event) ? markWhatsNewSeen({ configService, currentVersion: appVersion() }) : false);
   updater.start();
 
   ipcMain.handle('autonomy:apply-preset', (event, preset) => {

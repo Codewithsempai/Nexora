@@ -20,6 +20,7 @@ connections to `generativelanguage.googleapis.com`, authenticated with your key.
 | **Live voice** | **Microphone audio** (16 kHz PCM) streamed live, plus the audio and transcript coming back | Only while a Live voice session is active (after a wake word, a mic button press or a hotkey). The orb popup shows when it is active. |
 | **Explain my screen** | **A screenshot** of all monitors, or of the one you chose ("this screen", "my Chrome screen") | Only when you press the hotkey (Ctrl+Shift+E), say "explain my screen", or press Explain on a card. Never automatically. |
 | **Explain copied error text** | The text from your clipboard | Only when you press Explain on a card (the clipboard watcher is off by default) |
+| **Smarter memory recall** | The text of your saved notes (once, when saved or edited) and your question (when you chat), so Google's embedding model can match by meaning | Only when **Settings -> Memory Vault -> Smarter recall** is on (default) and a key is set. Off = offline keyword search only. Vectors are stored encrypted on your PC. |
 | **Memory and reminder understanding** | The sentence you typed or said (for example "my college is...") so Gemini can turn it into a structured memory or reminder | When your message looks like a memory/reminder request |
 | **Spoken replies (TTS)** | The text to be spoken | When NEXORA speaks with a Gemini voice |
 | **Model list** | Your API key only (to list the models your key can use) | When Settings or a fallback needs the model list |
@@ -30,7 +31,7 @@ by NEXORA**.
 
 ### Update check & Auto-Update (GitHub, not Google)
 
-Installed builds check **GitHub Releases** (`codewithsempai-daya/nexora`) for a
+Installed builds check **GitHub Releases** (`Codewithsempai/Nexora`) for a
 newer stable version shortly after start-up and periodically every 6 hours when
 **Automatic Updates** is turned on. No API key, memories, audio, or personal
 identifiers are sent; GitHub sees your IP address and updater request headers as
@@ -110,5 +111,5 @@ in the same release and the change is listed in the release notes.
 
 ## 7. Contact
 
-Privacy questions or requests: open a GitHub issue in `codewithsempai-daya/nexora`
-(`https://github.com/codewithsempai-daya/nexora/issues`, no personal data please).
+Privacy questions or requests: open a GitHub issue in `Codewithsempai/Nexora`
+(`https://github.com/Codewithsempai/Nexora/issues`, no personal data please).

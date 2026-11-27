@@ -5,6 +5,12 @@ const { VALID_IPC_CHANNELS } = require('../../src/preload/contracts/api');
 
 const root = path.resolve(__dirname, '../..');
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
+
+const topChangelog = /^##\s+v?(\d+\.\d+\.\d+)/m.exec(fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8'))?.[1];
+assert.strictEqual(pkg.version, topChangelog, 'package.json version must match the newest CHANGELOG.md entry');
+assert.strictEqual(lock.version, pkg.version, 'package-lock.json version must match package.json');
+assert.strictEqual(lock.packages?.['']?.version, pkg.version, 'package-lock.json root package version must match package.json');
 
 assert.ok(pkg.build && pkg.build.appId === 'com.codewithsempai.nexora', 'package.json build.appId missing');
 assert.strictEqual(pkg.build.productName, 'NEXORA', 'package.json productName must be NEXORA');
@@ -20,7 +26,7 @@ assert.strictEqual(pkg.build.nsis.include, 'build/installer.nsh', 'Custom NSIS s
 
 assert.ok(Array.isArray(pkg.build.asarUnpack) && pkg.build.asarUnpack.some((p) => p.includes('wakeword')), 'wakeword assets must be unpacked');
 assert.ok(Array.isArray(pkg.build.extraResources) && pkg.build.extraResources.some((r) => r.from.includes('nexora-core.exe')), 'Rust sidecar must be packaged in extraResources');
-assert.ok(Array.isArray(pkg.build.publish) && pkg.build.publish[0].owner === 'codewithsempai-daya' && pkg.build.publish[0].repo === 'nexora', 'GitHub publish target must be codewithsempai-daya/nexora');
+assert.ok(Array.isArray(pkg.build.publish) && pkg.build.publish[0].owner === 'Codewithsempai' && pkg.build.publish[0].repo === 'Nexora', 'GitHub publish target must be Codewithsempai/Nexora');
 
 assert.ok(pkg.dependencies['electron-updater'] && pkg.devDependencies['electron-builder'], 'updater and builder deps must exist');
 assert.ok(pkg.scripts.dist && pkg.scripts.dist.includes('electron-builder'), 'npm run dist script missing');

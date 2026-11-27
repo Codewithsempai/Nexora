@@ -38,20 +38,20 @@ emitterLegacy.emit('update-downloaded', { version: '1.0.0' });
 assert.deepStrictEqual(notified, { version: '1.0.0' });
 
 // Phase 2 UpdaterService tests
-assert.strictEqual(GITHUB_OWNER, 'codewithsempai-daya');
-assert.strictEqual(GITHUB_REPO, 'nexora');
-assert.strictEqual(isStableVersion('0.3.26'), true);
-assert.strictEqual(isStableVersion('0.3.26-beta.1'), false);
+assert.strictEqual(GITHUB_OWNER, 'Codewithsempai');
+assert.strictEqual(GITHUB_REPO, 'Nexora');
+assert.strictEqual(isStableVersion('0.3.27'), true);
+assert.strictEqual(isStableVersion('0.3.27-beta.1'), false);
 
 const cleanedNotes = sanitizeReleaseNotes('<p>Hello <b>World</b></p><script>alert(1)</script><br/><li>Fix audio</li>');
 assert(!cleanedNotes.includes('<script>'), 'Release notes must strip HTML tags');
 assert(cleanedNotes.includes('Hello World') && cleanedNotes.includes('Fix audio'));
 
-assert.strictEqual(validateUpdateMetadata({ version: '0.3.26', files: [{ url: 'https://github.com/codewithsempai-daya/nexora/releases/download/v0.3.26/NEXORA-Setup-x64.exe' }] }, '0.3.25').ok, true);
-assert.strictEqual(validateUpdateMetadata({ version: '0.3.24' }, '0.3.25').ok, false, 'Must reject downgrades');
-assert.strictEqual(validateUpdateMetadata({ version: '0.3.26-rc.1' }, '0.3.25').ok, false, 'Must reject prereleases');
-assert.strictEqual(validateUpdateMetadata({ version: '0.3.26', files: [{ url: 'https://evil.example.com/payload.exe' }] }, '0.3.25').ok, false, 'Must reject untrusted origins');
-assert.strictEqual(validateUpdateMetadata({ version: '0.3.26', files: [{ url: 'http://github.com/codewithsempai-daya/nexora/x.exe' }] }, '0.3.25').ok, false, 'Must reject non-HTTPS');
+assert.strictEqual(validateUpdateMetadata({ version: '0.3.27', files: [{ url: 'https://github.com/Codewithsempai/Nexora/releases/download/v0.3.27/NEXORA-Setup-x64.exe' }] }, '0.3.26').ok, true);
+assert.strictEqual(validateUpdateMetadata({ version: '0.3.25' }, '0.3.26').ok, false, 'Must reject downgrades');
+assert.strictEqual(validateUpdateMetadata({ version: '0.3.27-rc.1' }, '0.3.26').ok, false, 'Must reject prereleases');
+assert.strictEqual(validateUpdateMetadata({ version: '0.3.27', files: [{ url: 'https://evil.example.com/payload.exe' }] }, '0.3.26').ok, false, 'Must reject untrusted origins');
+assert.strictEqual(validateUpdateMetadata({ version: '0.3.27', files: [{ url: 'http://github.com/Codewithsempai/Nexora/x.exe' }] }, '0.3.26').ok, false, 'Must reject non-HTTPS');
 
 (async () => {
   const mockStore = { updates: { checkOnStart: true, check: true, autoDownload: false } };
@@ -76,15 +76,15 @@ assert.strictEqual(validateUpdateMetadata({ version: '0.3.26', files: [{ url: 'h
     async checkForUpdates() {
       this.emit('checking-for-update');
       this.emit('update-available', {
-        version: '0.3.26',
-        releaseName: 'NEXORA v0.3.26',
+        version: '0.3.27',
+        releaseName: 'NEXORA v0.3.27',
         releaseNotes: '<p>Bug fixes &amp; performance boost</p>',
-        files: [{ url: 'https://github.com/codewithsempai-daya/nexora/releases/download/v0.3.26/NEXORA-Setup-x64.exe' }],
+        files: [{ url: 'https://github.com/Codewithsempai/Nexora/releases/download/v0.3.27/NEXORA-Setup-x64.exe' }],
       });
     }
     async downloadUpdate() {
       this.emit('download-progress', { percent: 100, transferred: 1024, total: 1024, bytesPerSecond: 512 });
-      this.emit('update-downloaded', { version: '0.3.26', releaseNotes: 'Verified update' });
+      this.emit('update-downloaded', { version: '0.3.27', releaseNotes: 'Verified update' });
     }
     quitAndInstall(silent, forceRun) {
       this.quitCalled = { silent, forceRun };
@@ -95,7 +95,7 @@ assert.strictEqual(validateUpdateMetadata({ version: '0.3.26', files: [{ url: 'h
   const events = [];
   let cleanupCalled = false;
   const svc = new UpdaterService({
-    currentVersion: '0.3.25',
+    currentVersion: '0.3.26',
     isPackaged: true,
     configService: mockConfig,
     loadAutoUpdater: () => ({ autoUpdater: fakeUpdater }),
@@ -109,19 +109,19 @@ assert.strictEqual(validateUpdateMetadata({ version: '0.3.26', files: [{ url: 'h
 
   svc.start();
   assert.strictEqual(fakeUpdater.feed.provider, 'github');
-  assert.strictEqual(fakeUpdater.feed.owner, 'codewithsempai-daya');
-  assert.strictEqual(fakeUpdater.feed.repo, 'nexora');
+  assert.strictEqual(fakeUpdater.feed.owner, 'Codewithsempai');
+  assert.strictEqual(fakeUpdater.feed.repo, 'Nexora');
   assert.strictEqual(fakeUpdater.autoInstallOnAppQuit, false, 'Must require explicit user confirmation before restart/install');
 
   const st1 = await svc.check({ manual: true });
   assert.strictEqual(st1.status, 'available');
-  assert.strictEqual(st1.availableVersion, '0.3.26');
+  assert.strictEqual(st1.availableVersion, '0.3.27');
   assert.strictEqual(st1.releaseNotes, 'Bug fixes & performance boost');
 
   const dl = await svc.downloadUpdate();
   assert.strictEqual(dl.success, true);
   assert.strictEqual(svc.getState().status, 'downloaded');
-  assert.strictEqual(svc.getState().downloadedVersion, '0.3.26');
+  assert.strictEqual(svc.getState().downloadedVersion, '0.3.27');
 
   const inst = await svc.installAndRestart();
   assert.strictEqual(inst.success, true);

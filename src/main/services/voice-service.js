@@ -10,7 +10,7 @@ const { DEFAULT_GEMINI_MODEL } = require('./gemini-client');
 const { ModelDirectory, DEFAULT_LIVE_MODEL, classifyFailure, SWITCHABLE_FAILURES } = require('./model-ladder');
 const { MEMORY_RULES } = require('./memory-learner');
 const { cleanFacts, pickExtractModels } = require('./memory-extractor');
-const { applyAssistantCommandsSmart, REMINDER_RULES_LIVE } = require('./assistant-commands');
+const { applyAssistantCommandsSmart, REMINDER_RULES_LIVE, UPDATE_RULES_LIVE } = require('./assistant-commands');
 const { isMuteCommand, mergeTranscriptFragments, pcmRms } = require('./voice-utils');
 const { WakeWordService } = require('./wakeword-service');
 
@@ -78,6 +78,7 @@ class VoiceService {
     this.autonomy = null; // set by registerIpcHandlers (v0.3.8)
     this.memoryStore = null; // set by registerIpcHandlers
     this.reminderService = null; // set by registerIpcHandlers
+    this.updater = null; // set by registerIpcHandlers (lets "Nexora, check for updates" work by voice)
     this.lastActivityAt = Date.now();
     this.idleTimer = null;
     // v0.3.31: graceful standby ("mute" and the one-time wake call finish the spoken answer first)
@@ -133,7 +134,7 @@ class VoiceService {
   memoryPrompt() {
     try {
       const context = this.memoryStore?.buildContext('') || '';
-      const rules = this.reminderService ? `\n\n${REMINDER_RULES_LIVE}` : '';
+      const rules = `${this.reminderService ? `\n\n${REMINDER_RULES_LIVE}` : ''}${this.updater ? `\n\n${UPDATE_RULES_LIVE}` : ''}`;
       return context ? `\n\n${MEMORY_RULES}${rules}\n\nUser memory:\n${context}` : rules;
     } catch { return ''; }
   }
@@ -508,11 +509,11 @@ class VoiceService {
     try { if (this.autonomy?.hasPendingApproval?.() && this.autonomy.voiceApprove(heard).handled) { this.setMode('thinking', { message: 'Answered the card by voice.' }); return false; } } catch { /* ignore */ }
     // v0.3.8: "Nexora, stop" cancels a running task; "later" while a reminder is waiting offers a new time.
     try { if (this.autonomy?.isStopPhrase(heard)) this.autonomy.stopTask(); else this.autonomy?.proactive?.maybeLater?.(heard); } catch { /* ignore */ }
-    if (!isMuteCommand(heard) && (this.memoryStore || this.reminderService)) {
+    if (!isMuteCommand(heard) && (this.memoryStore || this.reminderService || this.updater)) {
       // Reminders first ("remind me to … at …"), then memory ("remember that …", "forget …"). Saves are pushed to the UI live.
       // Regex first (instant), then Gemini understanding for Tamil / Tanglish / any wording. Saves are pushed to the UI live.
       const apiKey = this.getApiKey();
-      void (async () => applyAssistantCommandsSmart({ memoryStore: this.memoryStore, reminderService: this.reminderService, text: heard, source: 'voice', apiKey, models: apiKey ? await pickExtractModels(this.modelDirectory, apiKey, this.configService.get('ai.chatModel')) : null }))()
+      void (async () => applyAssistantCommandsSmart({ memoryStore: this.memoryStore, reminderService: this.reminderService, updater: this.updater || null, text: heard, source: 'voice', apiKey, models: apiKey ? await pickExtractModels(this.modelDirectory, apiKey, this.configService.get('ai.chatModel')) : null }))()
         .then((outcome) => { if (outcome.saved.length || outcome.forgotten.length || outcome.reminders.length) this.emit('voice:memory', outcome); })
         .catch(() => {});
     }

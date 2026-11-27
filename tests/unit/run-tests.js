@@ -110,7 +110,7 @@ function testOrbStateManager() {
 }
 
 function testConfigDefaults() {
-  assert.strictEqual(DEFAULT_CONFIG.version, '0.3.25');
+  assert.strictEqual(DEFAULT_CONFIG.version, require('../../package.json').version);
   assert.strictEqual(DEFAULT_CONFIG.performance.mode, 'medium');
   assert.strictEqual(DEFAULT_CONFIG.appearance.theme, 'dark-amber');
   assert.strictEqual(DEFAULT_CONFIG.audio.enabled, true);

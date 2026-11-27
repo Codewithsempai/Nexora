@@ -41,9 +41,9 @@ Alternative Windows-specific variables (`WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`) 
 
 ---
 
-## 3. Publishing Releases & One-Click Auto-Update (`codewithsempai-daya/nexora`)
+## 3. Publishing Releases & One-Click Auto-Update (`Codewithsempai/Nexora`)
 
-NEXORA uses `electron-updater` in the main process configured for GitHub Releases (`owner: codewithsempai-daya`, `repo: nexora`).
+NEXORA uses `electron-updater` in the main process configured for GitHub Releases (`owner: Codewithsempai`, `repo: Nexora`).
 
 ### Manual or CI Release Workflow
 1. Bump version consistently in `package.json` (`version`) and `DEFAULT_CONFIG.version` in `src/main/services/config.js`, then update `CHANGELOG.md`.

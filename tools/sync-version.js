@@ -26,6 +26,12 @@ function sync({ check = false, base = root } = {}) {
     const next = text.replace(t.pattern, t.replace(version));
     if (next !== text) { drift.push(`${t.file}: out of step with package.json ${version}`); if (!check) fs.writeFileSync(file, next); }
   }
+  // The newest CHANGELOG entry must be the version being shipped (the updater compares against package.json).
+  const logFile = path.join(base, 'CHANGELOG.md');
+  if (fs.existsSync(logFile)) {
+    const top = /^##\s+v?(\d+\.\d+\.\d+)/m.exec(fs.readFileSync(logFile, 'utf8'))?.[1];
+    if (top && top !== version) drift.push(`CHANGELOG.md: newest entry is ${top}, package.json is ${version} (edit one of them by hand)`);
+  }
   return { version, drift };
 }
 

@@ -13,7 +13,7 @@
 <p align="center"><strong>A little AI buddy that lives on your screen, hears its name, talks back and gets things done.</strong></p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/Version-0.3.35-78ffe2?style=for-the-badge">
+  <img alt="Version" src="https://img.shields.io/badge/Version-0.4.0-78ffe2?style=for-the-badge">
   <img alt="AGPL-3.0 License" src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg?style=for-the-badge">
   <img alt="Windows" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=for-the-badge&logo=windows&logoColor=white">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-33-47848F?style=for-the-badge&logo=electron&logoColor=white">
@@ -91,7 +91,7 @@ macOS support is in design: see `platforms/apple/`.
 
 ## Updates
 
-Installed Windows builds use `electron-updater` against GitHub Releases (`codewithsempai-daya/nexora`). When **Automatic Updates** is enabled in **Settings -> Support & Updates**, NEXORA checks automatically after launch and periodically every 6 hours, displays release notes and download progress, and installs on confirmation via **Update Now** without overwriting `%APPDATA%\nexora` (`userData`). Development builds can check for new releases manually via **Check for Updates**.
+Installed Windows builds use `electron-updater` against GitHub Releases (`Codewithsempai/Nexora`). When **Automatic Updates** is enabled in **Settings -> Support & Updates**, NEXORA checks automatically after launch and periodically every 6 hours, displays release notes and download progress, and installs on confirmation via **Update Now** without overwriting `%APPDATA%\nexora` (`userData`). Development builds can check for new releases manually via **Check for Updates**.
 
 ## Windows Installer & Build
 

@@ -273,6 +273,16 @@ export class SettingsPanel {
           <!-- Phase 2: Encrypted, user-managed persistent memory -->
           <div class="settings-group">
             <h3 class="settings-group-title">Persistent Memory Vault</h3>
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">Smarter recall (by meaning)</span>
+                <span class="setting-desc">Also finds notes that mean the same as your question, even with different words (“what do I do to relax?” finds “enjoys chess”). Sends note text to Google’s embedding model with your Gemini key. Off = offline keyword search only.</span>
+              </div>
+              <label class="setting-toggle">
+                <input type="checkbox" id="settingSemanticRecall" checked />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
             <div class="setting-row setting-row-stack memory-create-row">
               <div class="setting-info"><span class="setting-name">Save an approved memory</span><span class="setting-desc">Saved here, or automatically when you say “remember that…”, “my name is…”, “I like…” (chat or voice). Say “forget …” to remove one. Encrypted at rest.</span></div>
               <div class="memory-create-controls">
@@ -329,7 +339,7 @@ export class SettingsPanel {
               <div class="meta-line"><span>Owner_name</span><strong>Dayanithi</strong></div>
               <div class="meta-line"><span>Code_name</span><strong>Codewithsempai</strong></div>
               <div class="meta-line"><span>Release</span><strong>Phase 3: Live Voice &amp; Wake Word</strong></div>
-              <div class="meta-line"><span>Version</span><strong id="aboutAppVersion">v0.3.25</strong></div>
+              <div class="meta-line"><span>Version</span><strong id="aboutAppVersion">v0.4.0</strong></div>
               <div class="meta-line"><span>Target OS</span><strong>Windows 11 (win32-x64)</strong></div>
             </div>
           </div>
@@ -350,13 +360,14 @@ export class SettingsPanel {
             <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:8px;">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
                 <div class="setting-info">
-                  <span class="setting-name">Current Version: <strong id="updateCurrentVersion">v0.3.25</strong></span>
+                  <span class="setting-name">Current Version: <strong id="updateCurrentVersion">v0.4.0</strong></span>
                   <span class="setting-desc" id="updateStatus" role="status">Not checked yet.</span>
                 </div>
                 <div class="sound-test-buttons">
                   <button class="sound-chip-btn" id="btnCheckUpdates" type="button">Check for Updates</button>
                   <button class="sound-chip-btn" id="btnDownloadUpdate" type="button" hidden>Download</button>
                   <button class="sound-chip-btn" id="btnUpdateNow" type="button" hidden>Update Now</button>
+                  <button class="sound-chip-btn" id="btnSkipUpdate" type="button" hidden>Skip this version</button>
                   <button class="sound-chip-btn" id="btnOpenRelease" type="button" hidden>View release</button>
                 </div>
               </div>
@@ -489,10 +500,13 @@ export class SettingsPanel {
     const liveModel = this.container.querySelector('#settingLiveModel');
     if (liveModel && c.ai?.liveModel) liveModel.dataset.selected = c.ai.liveModel;
 
+    const semToggle = this.container.querySelector('#settingSemanticRecall');
+    if (semToggle) { semToggle.checked = c.memory?.semanticRecall !== false; semToggle.onchange = () => { void this.saveSetting('memory.semanticRecall', !!semToggle.checked); }; }
+
     const updToggle = this.container.querySelector('#settingCheckUpdates');
     if (updToggle) updToggle.checked = c.updates?.checkOnStart !== false && c.updates?.autoDownload !== false;
 
-    const verLabel = c.version ? `v${c.version}` : 'v0.3.25';
+    const verLabel = c.version ? `v${c.version}` : 'v0.4.0';
     const aboutVer = this.container.querySelector('#aboutAppVersion');
     if (aboutVer) aboutVer.textContent = verLabel;
     const updVer = this.container.querySelector('#updateCurrentVersion');
@@ -953,12 +967,13 @@ LIVE: ${liveNames.join(' → ')}`;
     const checkBtn = this.container.querySelector('#btnCheckUpdates');
     const downloadBtn = this.container.querySelector('#btnDownloadUpdate');
     const installBtn = this.container.querySelector('#btnUpdateNow');
+    const skipBtn = this.container.querySelector('#btnSkipUpdate');
     const openBtn = this.container.querySelector('#btnOpenRelease');
     const api = window.nexoraAPI?.updates;
 
     const renderState = (st = {}) => {
       if (!st || typeof st !== 'object') return;
-      const curLabel = `v${st.currentVersion || st.current || '0.3.25'}`;
+      const curLabel = `v${st.currentVersion || st.current || '0.4.0'}`;
       if (currentVerEl) currentVerEl.textContent = curLabel;
       if (aboutVerEl) aboutVerEl.textContent = curLabel;
       if (toggle) toggle.checked = st.autoCheck !== false && st.autoDownload !== false;
@@ -975,6 +990,7 @@ LIVE: ${liveNames.join(' → ')}`;
         else if (st.status === 'disabled') status.textContent = `Automatic update checks are off (${curLabel}).`;
         else if (st.status === 'error') status.textContent = st.error || 'Could not check for updates.';
         else status.textContent = `Running ${curLabel}.${st.packaged ? '' : ' (Development build)'}`;
+        if (st.skippedVersion && st.status !== 'available' && st.status !== 'downloaded' && st.status !== 'downloading') status.textContent += ` Skipped v${st.skippedVersion}; you'll hear about newer versions.`;
       }
 
       if (progressWrap && progressBar && progressText) {
@@ -1001,6 +1017,8 @@ LIVE: ${liveNames.join(' → ')}`;
       if (downloadBtn) downloadBtn.hidden = !(st.status === 'available' && st.packaged !== false);
       if (installBtn) installBtn.hidden = !(st.status === 'downloaded' && st.updateDownloaded);
       if (openBtn) openBtn.hidden = !this.releaseUrl;
+      this.updateVersionToSkip = (st.status === 'available' || st.status === 'downloaded') ? (st.downloadedVersion || st.availableVersion || null) : null;
+      if (skipBtn) skipBtn.hidden = !this.updateVersionToSkip;
       if (checkBtn) checkBtn.disabled = st.status === 'checking' || st.status === 'downloading';
     };
 
@@ -1046,6 +1064,13 @@ LIVE: ${liveNames.join(' → ')}`;
     });
 
     openBtn?.addEventListener('click', () => { if (this.releaseUrl) api?.open?.(this.releaseUrl); });
+
+    skipBtn?.addEventListener('click', async () => {
+      const version = this.updateVersionToSkip;
+      if (!version || !api?.skip) return;
+      skipBtn.disabled = true;
+      try { await api.skip(version); renderState(await api.state?.().catch(() => ({}))); } finally { skipBtn.disabled = false; }
+    });
 
     api?.onState?.(renderState);
     api?.onProgress?.(renderState);
