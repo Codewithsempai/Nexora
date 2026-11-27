@@ -8,7 +8,7 @@ const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 (async () => {
   // ---- 1. release hygiene
   const pkg = JSON.parse(read('package.json'));
-  assert.strictEqual(pkg.version, '0.4.0');
+  assert.ok(/^\d+\.\d+\.\d+$/.test(pkg.version), 'package.json version must be semver');
   assert.ok(pkg.build.files.includes('CHANGELOG.md'), 'CHANGELOG.md must ship so the What\'s new popup can read it');
   assert.strictEqual(pkg.build.directories.output, 'dist');
   const ignore = read('.gitignore').split(/\r?\n/);
@@ -21,7 +21,8 @@ const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
   const { parseChangelog, getWhatsNew, markWhatsNewSeen } = require('../../src/main/services/whats-new');
   const log = path.join(root, 'CHANGELOG.md');
   const sections = parseChangelog(read('CHANGELOG.md'));
-  assert.strictEqual(sections[0].version, '0.4.0'); assert.ok(sections[0].body.includes('Packaging and releases'));
+  assert.strictEqual(sections[0].version, pkg.version, 'newest CHANGELOG section matches package.json');
+  const s040 = sections.find((x) => x.version === '0.4.0'); assert.ok(s040 && s040.body.includes('Packaging and releases'));
   const mkCfg = (init = {}) => { const m = { ...init }; return { get: (k) => m[k], set: (k, v) => { m[k] = v; return true; }, m }; };
   let cfg = mkCfg({ 'setup.completed': true, 'updates.lastSeenVersion': '0.3.26' });
   let wn = getWhatsNew({ configService: cfg, currentVersion: '0.4.0', changelogPath: log });
