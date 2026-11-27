@@ -1,6 +1,6 @@
 {
   "name": "nexora",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "NEXORA — Desktop AI Assistant (Phase 3 Live Voice + Wake Word + Memory + Reminders + Robot Orb)",
   "main": "src/main/application/app.js",
   "scripts": {
